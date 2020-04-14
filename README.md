@@ -43,7 +43,7 @@ This report displays your biggest continuous USED / EMPTY pages in your data fil
 
 Each bar in this report represents a continuous **range** of pages, and its height represents the number of pages in that range.
 
-![Compact Page Allocation Screenshot](https://raw.githubusercontent.com/EitanBlumin/mssql-data-allocation-report/master/media/screenshot2.png "Compact Page Allocation Screenshot")
+![Compact Page Allocation Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot2.png "Compact Page Allocation Screenshot")
 
 ### C. Allocation by Object
 
@@ -57,13 +57,13 @@ This report displays your data file's contents per each data page.
 
 It shows you the page allocation type (DATA / INDEX / LOB / IAM / EMPTY / etc.), and also the object and index it belongs to.
 
-![Detailed Page Allocation Screenshot](https://raw.githubusercontent.com/EitanBlumin/mssql-data-allocation-report/master/media/screenshot1.png "Detailed Page Allocation Screenshot")
+![Detailed Page Allocation Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot1.png "Detailed Page Allocation Screenshot")
 
 ### E. Transaction Log Detailed
 
 This report displays your transaction log file's contents, highlighting the active / non active VLFs.
 
-![Transaction Log Detailed Screenshot](https://raw.githubusercontent.com/EitanBlumin/mssql-data-allocation-report/master/media/screenshot3.png "Transaction Log Detailed Screenshot")
+![Transaction Log Detailed Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot3.png "Transaction Log Detailed Screenshot")
 
 ## Future Plans
 
