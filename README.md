@@ -26,6 +26,7 @@ The minimum permissions that are required to see this report are:
 - The compact report uses the `sys.dm_db_database_page_allocations` system function which is undocumented and not officially supported. It was introduced in **SQL Server 2012** and later.
 - The detailed transaction log report uses the `sys.dm_db_log_info` system function which was only introduced in **SQL Server 2016 SP 2** and later.
 - The detailed data report uses the `sys.dm_db_page_info` system function which was only introduced in **SQL Server 2019** and later.
+- The detailed data page report outputs detailed data on the page level. Therefore, if you're querying from a very large database, keep in mind that generating the reports could take a very long time.
 
 ## Examples
 
