@@ -37,6 +37,8 @@ This report is a summary free/used report for your data and log files.
 
 You can use the data slicers to filter by specific data or log files (if you have more than one in your database). The filters will affect all other pages.
 
+![File Allocation Summary Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot0.png "File Allocation Summary Screenshot")
+
 ### B. Page Allocation Compact
 
 This report displays your biggest continuous USED / EMPTY pages in your data file.
@@ -50,6 +52,8 @@ Each bar in this report represents a continuous **range** of pages, and its heig
 This report summarizes the data utilization of your database objects.
 
 You can use this report to drill-through to the detailed page report.
+
+![Allocation by Object Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot4.png "Allocation by Object Screenshot")
 
 ### D. Page Allocation Detailed
 
