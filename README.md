@@ -30,7 +30,7 @@ The minimum permissions that are required to see this report are:
 
 ## Examples
 
-At this time, there are currently two report types included:
+At this time, these are the report types included:
 
 ### A. File Allocation Summary
 
@@ -64,7 +64,7 @@ It shows you the page allocation type (DATA / INDEX / LOB / IAM / EMPTY / etc.),
 
 ![Detailed Page Allocation Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot1.png "Detailed Page Allocation Screenshot")
 
-### E. Transaction Log Detailed
+### E. Transaction Log Contents
 
 This report displays your transaction log file's contents, highlighting the active / non active VLFs.
 
