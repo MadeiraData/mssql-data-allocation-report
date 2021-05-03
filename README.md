@@ -26,16 +26,19 @@ The minimum permissions that are required to see this report are:
 - The compact report uses the `sys.dm_db_database_page_allocations` system function which is undocumented and not officially supported. It was introduced in **SQL Server 2012** and later.
 - The detailed transaction log report uses the `sys.dm_db_log_info` system function which was only introduced in **SQL Server 2016 SP 2** and later.
 - The detailed data report uses the `sys.dm_db_page_info` system function which was only introduced in **SQL Server 2019** and later.
+- The detailed data page report outputs detailed data on the page level. Therefore, if you're querying from a very large database, keep in mind that generating the reports could take a very long time.
 
 ## Examples
 
-At this time, there are currently two report types included:
+At this time, these are the report types included:
 
 ### A. File Allocation Summary
 
 This report is a summary free/used report for your data and log files.
 
 You can use the data slicers to filter by specific data or log files (if you have more than one in your database). The filters will affect all other pages.
+
+![File Allocation Summary Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot0.png "File Allocation Summary Screenshot")
 
 ### B. Page Allocation Compact
 
@@ -51,6 +54,8 @@ This report summarizes the data utilization of your database objects.
 
 You can use this report to drill-through to the detailed page report.
 
+![Allocation by Object Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot4.png "Allocation by Object Screenshot")
+
 ### D. Page Allocation Detailed
 
 This report displays your data file's contents per each data page.
@@ -59,7 +64,7 @@ It shows you the page allocation type (DATA / INDEX / LOB / IAM / EMPTY / etc.),
 
 ![Detailed Page Allocation Screenshot](https://raw.githubusercontent.com/MadeiraData/mssql-data-allocation-report/master/media/screenshot1.png "Detailed Page Allocation Screenshot")
 
-### E. Transaction Log Detailed
+### E. Transaction Log Contents
 
 This report displays your transaction log file's contents, highlighting the active / non active VLFs.
 
