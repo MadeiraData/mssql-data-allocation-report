@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31205.134
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F14B399A-7131-4C87-9E4B-1186C45EF12D}") = "FileAllocationMap", "FileAllocationMap.rptproj", "{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Default = Debug|Default
+		DebugLocal|Default = DebugLocal|Default
+		Release|Default = Release|Default
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.Debug|Default.ActiveCfg = Debug
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.Debug|Default.Build.0 = Debug
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.Debug|Default.Deploy.0 = Debug
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.DebugLocal|Default.ActiveCfg = DebugLocal
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.DebugLocal|Default.Build.0 = DebugLocal
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.Release|Default.ActiveCfg = Release
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.Release|Default.Build.0 = Release
+		{5FEAC3FA-942F-4E7E-979D-AB5EDC1455ED}.Release|Default.Deploy.0 = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {019CDE66-E593-4A11-937D-CE31FDE4CB52}
+	EndGlobalSection
+EndGlobal
