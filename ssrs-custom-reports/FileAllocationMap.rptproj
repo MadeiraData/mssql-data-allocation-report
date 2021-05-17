@@ -49,7 +49,9 @@
     <Reports>@(Report)</Reports>
   </PropertyGroup>
   <ItemGroup>
+    <Report Include="Data File Allocation Map - Detailed v2.rdl" />
     <Report Include="Data File Allocation Map - Detailed.rdl" />
+    <Report Include="Data File Allocation Map - Overview v2.rdl" />
     <Report Include="Data File Allocation Map - Overview.rdl" />
     <Report Include="Transaction Log Allocation Map.rdl" />
   </ItemGroup>
