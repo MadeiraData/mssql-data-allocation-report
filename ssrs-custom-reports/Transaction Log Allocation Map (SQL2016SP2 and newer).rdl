@@ -119,7 +119,7 @@ FROM sys.dm_db_log_info(DB_ID())</CommandText>
                     </Style>
                   </TextRun>
                   <TextRun>
-                    <Value>Version 1.0</Value>
+                    <Value>Version 1.0 (SQL 2016 SP2 and newer)</Value>
                     <Style>
                       <Color>White</Color>
                     </Style>
@@ -345,6 +345,7 @@ FROM sys.dm_db_log_info(DB_ID())</CommandText>
                                           <UseValueAsLabel>true</UseValueAsLabel>
                                           <Visible>true</Visible>
                                         </ChartDataLabel>
+                                        <ToolTip>=Fields!vlf_status_desc.Value &amp; ": " &amp; Fields!vlf_size_mb.Value &amp; " MB," &amp; vbCrLf &amp; " Offset: " &amp; Fields!vlf_begin_offset.Value</ToolTip>
                                         <Style />
                                         <ChartMarker>
                                           <Style />

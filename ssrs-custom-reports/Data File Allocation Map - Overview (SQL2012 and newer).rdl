@@ -174,7 +174,7 @@ CROSS APPLY
                     </Style>
                   </TextRun>
                   <TextRun>
-                    <Value>Version 2.0</Value>
+                    <Value>Version 2.0 (SQL 2012 and newer)</Value>
                     <Style>
                       <Color>White</Color>
                     </Style>
@@ -214,7 +214,7 @@ CROSS APPLY
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>ServerName</rd:DefaultName>
-            <Top>0.38833in</Top>
+            <Top>0.40222in</Top>
             <Left>1.11458in</Left>
             <Height>0.19444in</Height>
             <Width>2.39583in</Width>
@@ -251,7 +251,7 @@ CROSS APPLY
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox19</rd:DefaultName>
-            <Top>0.38833in</Top>
+            <Top>0.40222in</Top>
             <Height>0.19444in</Height>
             <Width>1.11458in</Width>
             <ZIndex>2</ZIndex>
@@ -285,7 +285,7 @@ CROSS APPLY
                 </Style>
               </Paragraph>
             </Paragraphs>
-            <Top>0.58277in</Top>
+            <Top>0.59666in</Top>
             <Left>1.12847in</Left>
             <Height>0.19444in</Height>
             <Width>2.38194in</Width>
@@ -322,7 +322,7 @@ CROSS APPLY
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox19</rd:DefaultName>
-            <Top>0.58277in</Top>
+            <Top>0.59666in</Top>
             <Height>0.19444in</Height>
             <Width>1.11458in</Width>
             <ZIndex>4</ZIndex>
@@ -407,7 +407,7 @@ CROSS APPLY
                                           <Actions>
                                             <Action>
                                               <Drillthrough>
-                                                <ReportName>Data File Allocation Map - Detailed v2</ReportName>
+                                                <ReportName>Data File Allocation Map - Detailed (SQL2012 and newer)</ReportName>
                                                 <Parameters>
                                                   <Parameter Name="FileName">
                                                     <Value>=Fields!file_name.Value</Value>
@@ -966,7 +966,7 @@ CROSS APPLY
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>FileAllocation</DataSetName>
-            <Top>2.04467cm</Top>
+            <Top>2.07994cm</Top>
             <Height>14.2cm</Height>
             <Width>30cm</Width>
             <ZIndex>5</ZIndex>
@@ -996,7 +996,7 @@ CROSS APPLY
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>ExecutionTime</rd:DefaultName>
-            <Top>0.38833in</Top>
+            <Top>0.40222in</Top>
             <Left>8.79525in</Left>
             <Height>0.19444in</Height>
             <Width>2.76042in</Width>
@@ -1031,7 +1031,7 @@ CROSS APPLY
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox2</rd:DefaultName>
-            <Top>6.39554in</Top>
+            <Top>6.40943in</Top>
             <Height>0.1875in</Height>
             <Width>0.34326in</Width>
             <ZIndex>7</ZIndex>
@@ -1079,7 +1079,7 @@ CROSS APPLY
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox2</rd:DefaultName>
-            <Top>6.39554in</Top>
+            <Top>6.40943in</Top>
             <Left>0.34326in</Left>
             <Height>0.1875in</Height>
             <Width>11.46776in</Width>
@@ -1095,7 +1095,7 @@ CROSS APPLY
             </Style>
           </Textbox>
         </ReportItems>
-        <Height>7in</Height>
+        <Height>7.01389in</Height>
         <Style />
       </Body>
       <Width>12in</Width>

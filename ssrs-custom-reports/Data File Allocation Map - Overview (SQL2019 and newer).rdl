@@ -174,7 +174,7 @@ CROSS APPLY
                     </Style>
                   </TextRun>
                   <TextRun>
-                    <Value>Version 1.0</Value>
+                    <Value>Version 1.0 (SQL 2019 and newer)</Value>
                     <Style>
                       <Color>White</Color>
                     </Style>
@@ -407,7 +407,7 @@ CROSS APPLY
                                           <Actions>
                                             <Action>
                                               <Drillthrough>
-                                                <ReportName>Data File Allocation Map - Detailed</ReportName>
+                                                <ReportName>Data File Allocation Map - Detailed (SQL2019 and newer)</ReportName>
                                                 <Parameters>
                                                   <Parameter Name="FileName">
                                                     <Value>=Fields!file_name.Value</Value>

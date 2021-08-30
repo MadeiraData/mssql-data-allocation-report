@@ -49,11 +49,12 @@
     <Reports>@(Report)</Reports>
   </PropertyGroup>
   <ItemGroup>
-    <Report Include="Data File Allocation Map - Detailed v2.rdl" />
-    <Report Include="Data File Allocation Map - Detailed.rdl" />
-    <Report Include="Data File Allocation Map - Overview v2.rdl" />
-    <Report Include="Data File Allocation Map - Overview.rdl" />
-    <Report Include="Transaction Log Allocation Map.rdl" />
+    <Report Include="Data File Allocation Map - Detailed (SQL2012 and newer).rdl" />
+    <Report Include="Data File Allocation Map - Detailed (SQL2019 and newer).rdl" />
+    <Report Include="Data File Allocation Map - Overview (SQL2012 and newer).rdl" />
+    <Report Include="Data File Allocation Map - Overview (SQL2019 and newer).rdl" />
+    <Report Include="Transaction Log Allocation Map (SQL2008 and newer).rdl" />
+    <Report Include="Transaction Log Allocation Map (SQL2016SP2 and newer).rdl" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Reporting Services\Microsoft.ReportingServices.MSBuilder.targets" />
 </Project>
