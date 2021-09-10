@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Report MustUnderstand="df" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
   <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
+  <Author>Eitan Blumin</Author>
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
     <DataSource Name="LocalServer">
@@ -360,7 +361,9 @@ INNER JOIN sys.database_files AS df ON df.file_id = li.FileID</CommandText>
                                           <Y>=Sum(Fields!vlf_size_mb.Value)</Y>
                                         </ChartDataPointValues>
                                         <ChartDataLabel>
-                                          <Style />
+                                          <Style>
+                                            <Format>#,0 MB</Format>
+                                          </Style>
                                           <UseValueAsLabel>true</UseValueAsLabel>
                                           <Visible>true</Visible>
                                         </ChartDataLabel>
@@ -662,7 +665,7 @@ INNER JOIN sys.database_files AS df ON df.file_id = li.FileID</CommandText>
                                 </Style>
                               </ChartNoDataMessage>
                               <DataSetName>TranLogAllocation</DataSetName>
-                              <Top>1.2cm</Top>
+                              <Top>1.16445cm</Top>
                               <Height>13.25182cm</Height>
                               <Width>29.35141cm</Width>
                               <Style>

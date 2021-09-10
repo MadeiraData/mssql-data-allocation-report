@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Report MustUnderstand="df" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
   <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
+  <Author>Eitan Blumin</Author>
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
     <DataSource Name="LocalServer">
@@ -341,7 +342,9 @@ FROM sys.dm_db_log_info(DB_ID())</CommandText>
                                           <Y>=Sum(Fields!vlf_size_mb.Value)</Y>
                                         </ChartDataPointValues>
                                         <ChartDataLabel>
-                                          <Style />
+                                          <Style>
+                                            <Format>#,0 MB</Format>
+                                          </Style>
                                           <UseValueAsLabel>true</UseValueAsLabel>
                                           <Visible>true</Visible>
                                         </ChartDataLabel>
