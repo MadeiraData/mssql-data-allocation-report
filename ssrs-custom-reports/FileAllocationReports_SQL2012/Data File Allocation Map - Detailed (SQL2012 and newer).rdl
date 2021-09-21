@@ -835,7 +835,7 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
                 <Position>TopLeft</Position>
               </ChartTitle>
             </ChartTitles>
-            <Palette>SemiTransparent</Palette>
+            <Palette>Pastel</Palette>
             <ChartBorderSkin>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>
@@ -1202,7 +1202,7 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
                 <Position>TopLeft</Position>
               </ChartTitle>
             </ChartTitles>
-            <Palette>SemiTransparent</Palette>
+            <Palette>Pastel</Palette>
             <ChartBorderSkin>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>
@@ -1860,17 +1860,91 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
     </ReportSection>
   </ReportSections>
   <ReportParameters>
+    <ReportParameter Name="ServerName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ServerName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="DatabaseName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>master</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>DatabaseName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ErrorText">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ErrorText</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="FontName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>"Tahoma"</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>FontName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ObjectTypeName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>Table</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ObjectTypeName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ObjectName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>sys.objects</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ObjectName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="Filtered">
+      <DataType>Boolean</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Filtered</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="MaxItems">
+      <DataType>Integer</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>128</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Max Items</Prompt>
+    </ReportParameter>
     <ReportParameter Name="FileName">
       <DataType>String</DataType>
-      <Prompt>File Name:</Prompt>
+      <Nullable>true</Nullable>
+      <Prompt>File Name</Prompt>
     </ReportParameter>
     <ReportParameter Name="FromPageId">
       <DataType>Integer</DataType>
-      <Prompt>From Page Id:</Prompt>
+      <Nullable>true</Nullable>
+      <Prompt>From Page Id</Prompt>
     </ReportParameter>
     <ReportParameter Name="ToPageId">
       <DataType>Integer</DataType>
-      <Prompt>To Page Id:</Prompt>
+      <Nullable>true</Nullable>
+      <Prompt>To Page Id</Prompt>
     </ReportParameter>
     <ReportParameter Name="TopN">
       <DataType>Integer</DataType>
