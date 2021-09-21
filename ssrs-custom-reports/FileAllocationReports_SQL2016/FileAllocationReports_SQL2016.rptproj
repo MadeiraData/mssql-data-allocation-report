@@ -6,9 +6,9 @@
     <ErrorLevel>2</ErrorLevel>
     <OverwriteDatasets>False</OverwriteDatasets>
     <OverwriteDataSources>False</OverwriteDataSources>
-    <TargetServerVersion>SSRS2008R2</TargetServerVersion>
+    <TargetServerVersion>SSRS2016</TargetServerVersion>
     <Platform>Win32</Platform>
-    <TargetReportFolder>ObjectAllocationMap</TargetReportFolder>
+    <TargetReportFolder>FileAllocationReports_SQL2016</TargetReportFolder>
     <TargetDatasetFolder>Datasets</TargetDatasetFolder>
     <TargetDatasourceFolder>Data Sources</TargetDatasourceFolder>
     <TargetReportPartFolder>Report Parts</TargetReportPartFolder>
@@ -22,7 +22,7 @@
     <OverwriteDataSources>False</OverwriteDataSources>
     <TargetServerVersion>SSRS2016</TargetServerVersion>
     <Platform>Win32</Platform>
-    <TargetReportFolder>ObjectAllocationMap</TargetReportFolder>
+    <TargetReportFolder>FileAllocationReports_SQL2016</TargetReportFolder>
     <TargetDatasetFolder>Datasets</TargetDatasetFolder>
     <TargetDatasourceFolder>Data Sources</TargetDatasourceFolder>
     <TargetReportPartFolder>Report Parts</TargetReportPartFolder>
@@ -36,7 +36,7 @@
     <OverwriteDataSources>False</OverwriteDataSources>
     <TargetServerVersion>SSRS2016</TargetServerVersion>
     <Platform>Win32</Platform>
-    <TargetReportFolder>ObjectAllocationMap</TargetReportFolder>
+    <TargetReportFolder>FileAllocationReports_SQL2016</TargetReportFolder>
     <TargetDatasetFolder>Datasets</TargetDatasetFolder>
     <TargetDatasourceFolder>Data Sources</TargetDatasourceFolder>
     <TargetReportPartFolder>Report Parts</TargetReportPartFolder>
@@ -49,11 +49,10 @@
     <Reports>@(Report)</Reports>
   </PropertyGroup>
   <ItemGroup>
-    <Report Include="Data File Allocation Map - Detailed (SQL2012 and newer).rdl" />
     <Report Include="Data File Allocation Map - Detailed (SQL2019 and newer).rdl" />
-    <Report Include="Data File Allocation Map - Overview (SQL2012 and newer).rdl" />
     <Report Include="Data File Allocation Map - Overview (SQL2019 and newer).rdl" />
-    <Report Include="Transaction Log Allocation Map (SQL2008 and newer).rdl" />
+    <Report Include="Data Page Allocation Map (SQL2016SP2 and newer).rdl" />
+    <Report Include="Object Allocation Summary (SQL2016SP2 and newer).rdl" />
     <Report Include="Transaction Log Allocation Map (SQL2016SP2 and newer).rdl" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Reporting Services\Microsoft.ReportingServices.MSBuilder.targets" />
