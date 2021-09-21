@@ -1924,12 +1924,14 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
     </ReportParameter>
     <ReportParameter Name="MaxItems">
       <DataType>Integer</DataType>
+      <Nullable>true</Nullable>
       <DefaultValue>
         <Values>
           <Value>128</Value>
         </Values>
       </DefaultValue>
       <Prompt>Max Items</Prompt>
+      <Hidden>true</Hidden>
     </ReportParameter>
     <ReportParameter Name="FileName">
       <DataType>String</DataType>

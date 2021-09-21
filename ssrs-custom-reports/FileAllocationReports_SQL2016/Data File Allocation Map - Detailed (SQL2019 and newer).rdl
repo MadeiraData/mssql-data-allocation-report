@@ -1954,6 +1954,12 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
       <AllowBlank>true</AllowBlank>
       <Prompt>FontName</Prompt>
     </ReportParameter>
+    <ReportParameter Name="MaxItems">
+      <DataType>Integer</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>MaxItems</Prompt>
+      <Hidden>true</Hidden>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -2014,6 +2020,11 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>3</RowIndex>
           <ParameterName>FontName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>MaxItems</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
