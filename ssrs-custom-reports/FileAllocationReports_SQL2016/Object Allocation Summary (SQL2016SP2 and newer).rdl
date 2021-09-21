@@ -553,7 +553,7 @@ ORDER BY t.file_id, t.object_id, t.index_id, t.partition_id</CommandText>
                 <Position>TopLeft</Position>
               </ChartTitle>
             </ChartTitles>
-            <Palette>SemiTransparent</Palette>
+            <Palette>Pastel</Palette>
             <ChartBorderSkin>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>

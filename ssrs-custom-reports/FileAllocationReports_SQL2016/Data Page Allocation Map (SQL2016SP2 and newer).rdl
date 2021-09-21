@@ -601,7 +601,7 @@ CROSS APPLY
                 <Position>TopLeft</Position>
               </ChartTitle>
             </ChartTitles>
-            <Palette>SemiTransparent</Palette>
+            <Palette>Pastel</Palette>
             <ChartBorderSkin>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>

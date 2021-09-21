@@ -546,7 +546,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
                 <Position>TopLeft</Position>
               </ChartTitle>
             </ChartTitles>
-            <Palette>SemiTransparent</Palette>
+            <Palette>Pastel</Palette>
             <ChartBorderSkin>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>
@@ -911,7 +911,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
                 <Position>TopLeft</Position>
               </ChartTitle>
             </ChartTitles>
-            <Palette>SemiTransparent</Palette>
+            <Palette>Pastel</Palette>
             <ChartBorderSkin>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>
@@ -1497,6 +1497,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>FileAllocation</DataSetName>
+            <Top>0cm</Top>
             <Height>1.2cm</Height>
             <Width>29.35143cm</Width>
             <ZIndex>2</ZIndex>
