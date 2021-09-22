@@ -15,132 +15,6 @@
     </DataSource>
   </DataSources>
   <DataSets>
-    <DataSet Name="FileAllocation">
-      <Query>
-        <DataSourceName>LocalServer</DataSourceName>
-        <CommandText>SELECT
-  databse_name = DB_NAME()
-, file_name
-, page_identifier = CONCAT(file_id,':',pt.from_page_id)
-, check_file_total_size = file_total_size
-, check_file_total_used_space = file_total_used_space
-, check_file_total_unused_pages = file_total_unused_pages
-, agg_file_total_reserved_pages = file_total_reserved_pages
-, agg_file_total_consecutive_unused_pages = SUM(pt.consecutive_unused_pages) OVER (PARTITION BY file_id)
-, pt.*
-, pages_in_range = pt.to_page_id - pt.from_page_id + 1
-FROM
-(
-SELECT
-  databse_name = DB_NAME()
-, file_id
-, file_name
-, file_total_size
-, file_total_used_space
-, file_total_unused_pages = file_total_size - file_total_reserved_pages + 1
-, file_total_reserved_pages
-, prev_used_page
-, from_used_page_id = allocated_page_page_id
-, to_page_id = COALESCE(NULLIF(next_used_page,file_total_size-1) - 1, next_used_page, file_total_size-1)
-, consecutive_unused_pages = COALESCE(NULLIF(next_used_page,file_total_size-1) - 1, next_used_page, file_total_size-1) - allocated_page_page_id
-, next_used_page_id = LEAD(allocated_page_page_id,1,file_total_size-1) OVER(PARTITION BY file_id ORDER BY allocated_page_page_id ASC)
-FROM
-(
-SELECT
-  p.allocated_page_file_id
-, file_total_reserved_pages = COUNT(*) OVER() + 9
-, p.allocated_page_page_id
-, prev_used_page = LAG(p.allocated_page_page_id,1,0) OVER (PARTITION BY p.allocated_page_file_id ORDER BY p.allocated_page_page_id ASC)
-, next_used_page = LEAD(p.allocated_page_page_id,1, NULL) OVER (PARTITION BY p.allocated_page_file_id ORDER BY p.allocated_page_page_id ASC)
-FROM sys.dm_db_database_page_allocations(DB_ID(),default,default,default,'DETAILED') AS p
-) AS sub1
-INNER JOIN
-(
-	SELECT database_id, file_id, file_name = [name], size AS file_total_size
-	, file_total_used_space = FILEPROPERTY([name], 'SpaceUsed')
-	FROM sys.master_files AS f
-	WHERE database_id = DB_ID() AND type = 0
-) AS f
-ON f.file_id = sub1.allocated_page_file_id
-WHERE ISNULL(sub1.next_used_page, f.file_total_size - 1) &lt;&gt; sub1.allocated_page_page_id + 1
-) AS sub2
-CROSS APPLY
-(
-	SELECT usage = 'EMPTY'
-		, from_page_id = from_used_page_id + 1
-		, to_page_id = sub2.to_page_id
-		, consecutive_unused_pages = sub2.consecutive_unused_pages
-	UNION ALL
-	SELECT
-		usage = 'USED'
-		, 0
-		, sub2.from_used_page_id
-		, 0
-	WHERE prev_used_page = 0
-	UNION ALL
-	SELECT
-		usage = 'USED'
-		, sub2.to_page_id + 1
-		, sub2.next_used_page_id
-		, 0
-	WHERE next_used_page_id &lt; file_total_size-1
-) AS pt</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="databse_name">
-          <DataField>databse_name</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="page_identifier">
-          <DataField>page_identifier</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="file_name">
-          <DataField>file_name</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="check_file_total_size">
-          <DataField>check_file_total_size</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="check_file_total_used_space">
-          <DataField>check_file_total_used_space</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="check_file_total_unused_pages">
-          <DataField>check_file_total_unused_pages</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="agg_file_total_reserved_pages">
-          <DataField>agg_file_total_reserved_pages</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="agg_file_total_consecutive_unused_pages">
-          <DataField>agg_file_total_consecutive_unused_pages</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="usage">
-          <DataField>usage</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="from_page_id">
-          <DataField>from_page_id</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="to_page_id">
-          <DataField>to_page_id</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="consecutive_unused_pages">
-          <DataField>consecutive_unused_pages</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="pages_in_range">
-          <DataField>pages_in_range</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
     <DataSet Name="DBLocal">
       <Query>
         <DataSourceName>LocalServer</DataSourceName>
@@ -157,90 +31,264 @@ CROSS APPLY
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="DataAllocationDataset">
+      <Query>
+        <DataSourceName>LocalServer</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@ObjectType">
+            <Value>=Parameters!ObjectTypeName.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@ObjectName">
+            <Value>=Parameters!ObjectName.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@MaxItems">
+            <Value>=Parameters!MaxItems.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@DatabaseName">
+            <Value>=Parameters!DatabaseName.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@FromPageId">
+            <Value>=Parameters!FromPageId.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@ToPageId">
+            <Value>=Parameters!ToPageId.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@FileName">
+            <Value>=Parameters!FileName.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SET NOCOUNT ON;
+DECLARE @IndexId int = NULL, @TableId int = NULL;
+
+IF @ObjectType = 'Index'
+BEGIN
+	SELECT @TableId = object_id
+	FROM sys.indexes
+	WHERE name = @ObjectName
+
+	IF @@ROWCOUNT &lt;&gt; 1 RAISERROR(N'Unable to determine table to which index "%s" belongs', 16, 1, @ObjectName);
+
+	SET @IndexId = INDEXPROPERTY(@TableId, @ObjectName, 'IndexID');
+END
+ELSE IF @ObjectType = 'Table'
+BEGIN
+	SET @TableId = OBJECT_ID(@ObjectName);
+END
+ELSE IF @ObjectType &lt;&gt; 'Database'
+BEGIN
+	RAISERROR(N'Object Type "%s" is not supported', 16, 1, @ObjectType);
+END
+
+SELECT
+  f.file_name
+, f.file_id
+, f.file_total_size
+, p.PageGroup
+, from_page_id = MIN(p.page_id)
+, to_page_id = MAX(p.page_id)
+, page_count = COUNT(p.page_id)
+, total_page_count = MAX(p.total_page_count)
+, free_kb = SUM(ISNULL(p.free_bytes, 8192)) / 1024
+, used_kb = SUM(ISNULL(p.used_bytes, 0)) / 1024
+FROM
+(
+SELECT *
+, PageGroup = NTILE(@MaxItems) OVER(ORDER BY p.page_id)
+FROM
+(
+SELECT allocated_page_file_id
+, page_id = allocated_page_page_id
+, page_type
+, page_type_desc = ISNULL(page_type_desc, 'EMPTY')
+, free_bytes = CASE WHEN ISNULL(page_type_desc, 'EMPTY') = 'EMPTY' THEN 8192 ELSE ISNULL((100 - page_free_space_percent) / 100.0 * 8192, 0) END
+, used_bytes = CASE WHEN ISNULL(page_type_desc, 'EMPTY') = 'EMPTY' THEN 0 ELSE ISNULL(page_free_space_percent / 100.0 * 8192, 8192) END
+, total_page_count = MAX(allocated_page_page_id) OVER (PARTITION BY allocated_page_file_id)
+FROM sys.dm_db_database_page_allocations(DB_ID(@DatabaseName),@TableId,@IndexId,default,'DETAILED')
+) AS p
+WHERE (@FromPageId IS NULL OR p.page_id &gt;= @FromPageId)
+AND (@ToPageId IS NULL OR p.page_id &lt;= @ToPageId)
+) AS p
+INNER JOIN 
+(
+	SELECT file_id, file_name = [name], size AS file_total_size
+	, file_total_used_space = FILEPROPERTY([name], 'SpaceUsed')
+	FROM sys.database_files AS f
+	WHERE type = 0
+                   AND  (@FileName IS NULL OR f.name = @FileName)
+) AS f
+ON f.file_id = p.allocated_page_file_id
+GROUP BY
+  f.file_name
+, f.file_id
+, f.file_total_size
+, p.PageGroup</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="file_name">
+          <DataField>file_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="file_id">
+          <DataField>file_id</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="file_total_size">
+          <DataField>file_total_size</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="PageGroup">
+          <DataField>PageGroup</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="from_page_id">
+          <DataField>from_page_id</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="to_page_id">
+          <DataField>to_page_id</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="page_count">
+          <DataField>page_count</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="total_page_count">
+          <DataField>total_page_count</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="free_kb">
+          <DataField>free_kb</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="used_kb">
+          <DataField>used_kb</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
       <Body>
         <ReportItems>
+          <Textbox Name="Textbox24">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>=Parameters!ErrorText.Value</Value>
+                    <Style>
+                      <FontFamily>Arial</FontFamily>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>Red</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style />
+              </Paragraph>
+            </Paragraphs>
+            <rd:DefaultName>Textbox24</rd:DefaultName>
+            <Height>0.6cm</Height>
+            <Width>20.60382cm</Width>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
           <Tablix Name="Tablix1">
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>30cm</Width>
+                  <Width>29.35137cm</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
                 <TablixRow>
-                  <Height>14.2cm</Height>
+                  <Height>15.9525cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
                         <Rectangle Name="Rectangle1">
                           <ReportItems>
-                            <Chart Name="Chart1">
+                            <Chart Name="Chart2">
                               <ChartCategoryHierarchy>
                                 <ChartMembers>
                                   <ChartMember>
-                                    <Group Name="Chart1_CategoryGroup">
+                                    <Group Name="Chart2_CategoryGroup">
                                       <GroupExpressions>
-                                        <GroupExpression>=Fields!from_page_id.Value</GroupExpression>
+                                        <GroupExpression>=Fields!PageGroup.Value</GroupExpression>
                                       </GroupExpressions>
                                     </Group>
                                     <SortExpressions>
                                       <SortExpression>
-                                        <Value>=Fields!from_page_id.Value</Value>
+                                        <Value>=Fields!PageGroup.Value</Value>
                                       </SortExpression>
                                     </SortExpressions>
-                                    <Label>=Fields!from_page_id.Value</Label>
+                                    <Label>=Min(Fields!from_page_id.Value) &amp; ".." &amp; Max(Fields!to_page_id.Value)</Label>
                                   </ChartMember>
                                 </ChartMembers>
                               </ChartCategoryHierarchy>
                               <ChartSeriesHierarchy>
                                 <ChartMembers>
                                   <ChartMember>
-                                    <Group Name="Chart1_SeriesGroup">
-                                      <GroupExpressions>
-                                        <GroupExpression>=Fields!usage.Value</GroupExpression>
-                                      </GroupExpressions>
-                                    </Group>
-                                    <SortExpressions>
-                                      <SortExpression>
-                                        <Value>=Fields!usage.Value</Value>
-                                      </SortExpression>
-                                    </SortExpressions>
-                                    <Label>=Fields!usage.Value</Label>
+                                    <Label>used kb</Label>
+                                  </ChartMember>
+                                  <ChartMember>
+                                    <Label>free kb</Label>
                                   </ChartMember>
                                 </ChartMembers>
                               </ChartSeriesHierarchy>
                               <ChartData>
                                 <ChartSeriesCollection>
-                                  <ChartSeries Name="allocationChart">
+                                  <ChartSeries Name="used_kb">
                                     <ChartDataPoints>
                                       <ChartDataPoint>
                                         <ChartDataPointValues>
-                                          <Y>=Sum(Fields!pages_in_range.Value) / 128.0</Y>
+                                          <Y>=Sum(Fields!used_kb.Value)</Y>
                                         </ChartDataPointValues>
                                         <ChartDataLabel>
                                           <Style />
-                                          <Label>=IIF(Sum(Fields!pages_in_range.Value) / 128 &gt;= 1, 
-Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
-                                          <Visible>true</Visible>
                                         </ChartDataLabel>
-                                        <ToolTip>=" From page: " &amp; Min(Fields!from_page_id.Value) &amp; vbCrLf &amp; ", To page: " &amp; Max(Fields!to_page_id.Value) &amp; vbCrLf &amp; ", Total Pages: " &amp; Sum(Fields!pages_in_range.Value) &amp; vbCrLf &amp; ", Size: " &amp; (CDec(Sum(Fields!pages_in_range.Value)) / 128.0) &amp; " MB"</ToolTip>
+                                        <ToolTip>="Pages: " &amp; Fields!from_page_id.Value &amp; ".." &amp; Fields!to_page_id.Value &amp; vbCrLf &amp; "Page Count: " &amp; Fields!page_count.Value &amp; " (" &amp; Format(Fields!used_kb.Value/(Fields!free_kb.Value+Fields!used_kb.Value), "P1") &amp; " used)" &amp; vbCrLf &amp; vbCrLf &amp; "Used: " &amp; Format(Fields!used_kb.Value, "#,0 KB") &amp; vbCrLf &amp; "Unused: " &amp; Format(Fields!free_kb.Value, "#,0 KB")</ToolTip>
                                         <ActionInfo>
                                           <Actions>
                                             <Action>
                                               <Drillthrough>
-                                                <ReportName>Data File Allocation Map - Detailed (SQL2012 and newer)</ReportName>
+                                                <ReportName>=IIF(Fields!page_count.Value &gt; Parameters!MaxItems.Value, "Data File Allocation Map - Overview (SQL2012 and newer)", "Data File Allocation Map - Detailed (SQL2012 and newer)")</ReportName>
                                                 <Parameters>
+                                                  <Parameter Name="ServerName">
+                                                    <Value>=Parameters!ServerName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="DatabaseName">
+                                                    <Value>=Parameters!DatabaseName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="ObjectTypeName">
+                                                    <Value>=Parameters!ObjectTypeName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="ObjectName">
+                                                    <Value>=Parameters!ObjectName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="Filtered">
+                                                    <Value>=Parameters!Filtered.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="MaxItems">
+                                                    <Value>=Parameters!MaxItems.Value</Value>
+                                                  </Parameter>
                                                   <Parameter Name="FileName">
                                                     <Value>=Fields!file_name.Value</Value>
                                                   </Parameter>
                                                   <Parameter Name="FromPageId">
-                                                    <Value>=Min(Fields!from_page_id.Value)</Value>
+                                                    <Value>=Fields!from_page_id.Value</Value>
                                                   </Parameter>
                                                   <Parameter Name="ToPageId">
-                                                    <Value>=Max(Fields!to_page_id.Value)</Value>
+                                                    <Value>=Fields!to_page_id.Value</Value>
                                                   </Parameter>
                                                 </Parameters>
                                               </Drillthrough>
@@ -254,7 +302,7 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                         <DataElementOutput>Output</DataElementOutput>
                                       </ChartDataPoint>
                                     </ChartDataPoints>
-                                    <Subtype>Stacked</Subtype>
+                                    <Subtype>PercentStacked</Subtype>
                                     <Style />
                                     <ChartEmptyPoints>
                                       <Style />
@@ -265,6 +313,85 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                         <Style />
                                       </ChartDataLabel>
                                     </ChartEmptyPoints>
+                                    <ChartItemInLegend>
+                                      <LegendText>Used</LegendText>
+                                    </ChartItemInLegend>
+                                    <ValueAxisName>Primary</ValueAxisName>
+                                    <CategoryAxisName>Primary</CategoryAxisName>
+                                    <ChartSmartLabel>
+                                      <CalloutLineColor>Black</CalloutLineColor>
+                                      <MinMovingDistance>0pt</MinMovingDistance>
+                                    </ChartSmartLabel>
+                                  </ChartSeries>
+                                  <ChartSeries Name="free_kb">
+                                    <ChartDataPoints>
+                                      <ChartDataPoint>
+                                        <ChartDataPointValues>
+                                          <Y>=Sum(Fields!free_kb.Value)</Y>
+                                        </ChartDataPointValues>
+                                        <ChartDataLabel>
+                                          <Style />
+                                        </ChartDataLabel>
+                                        <ToolTip>="Pages: " &amp; Fields!from_page_id.Value &amp; ".." &amp; Fields!to_page_id.Value &amp; vbCrLf &amp; "Page Count: " &amp; Fields!page_count.Value &amp; " (" &amp; Format(Fields!used_kb.Value/(Fields!free_kb.Value+Fields!used_kb.Value), "P1") &amp; " used)" &amp; vbCrLf &amp; vbCrLf &amp; "Used: " &amp; Format(Fields!used_kb.Value, "#,0 KB") &amp; vbCrLf &amp; "Unused: " &amp; Format(Fields!free_kb.Value, "#,0 KB")</ToolTip>
+                                        <ActionInfo>
+                                          <Actions>
+                                            <Action>
+                                              <Drillthrough>
+                                                <ReportName>=IIF(Fields!page_count.Value &gt; Parameters!MaxItems.Value, "Data File Allocation Map - Overview (SQL2012 and newer)", "Data File Allocation Map - Detailed (SQL2012 and newer)")</ReportName>
+                                                <Parameters>
+                                                  <Parameter Name="ServerName">
+                                                    <Value>=Parameters!ServerName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="DatabaseName">
+                                                    <Value>=Parameters!DatabaseName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="ObjectTypeName">
+                                                    <Value>=Parameters!ObjectTypeName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="ObjectName">
+                                                    <Value>=Parameters!ObjectName.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="Filtered">
+                                                    <Value>=Parameters!Filtered.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="MaxItems">
+                                                    <Value>=Parameters!MaxItems.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="FileName">
+                                                    <Value>=Fields!file_name.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="FromPageId">
+                                                    <Value>=Fields!from_page_id.Value</Value>
+                                                  </Parameter>
+                                                  <Parameter Name="ToPageId">
+                                                    <Value>=Fields!to_page_id.Value</Value>
+                                                  </Parameter>
+                                                </Parameters>
+                                              </Drillthrough>
+                                            </Action>
+                                          </Actions>
+                                        </ActionInfo>
+                                        <Style />
+                                        <ChartMarker>
+                                          <Style />
+                                        </ChartMarker>
+                                        <DataElementOutput>Output</DataElementOutput>
+                                      </ChartDataPoint>
+                                    </ChartDataPoints>
+                                    <Subtype>PercentStacked</Subtype>
+                                    <Style />
+                                    <ChartEmptyPoints>
+                                      <Style />
+                                      <ChartMarker>
+                                        <Style />
+                                      </ChartMarker>
+                                      <ChartDataLabel>
+                                        <Style />
+                                      </ChartDataLabel>
+                                    </ChartEmptyPoints>
+                                    <ChartItemInLegend>
+                                      <LegendText>Free</LegendText>
+                                    </ChartItemInLegend>
                                     <ValueAxisName>Primary</ValueAxisName>
                                     <CategoryAxisName>Primary</CategoryAxisName>
                                     <ChartSmartLabel>
@@ -284,7 +411,6 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                           <Style>None</Style>
                                         </Border>
                                         <FontSize>8pt</FontSize>
-                                        <Format>#,0</Format>
                                         <Color>#5c5c5c</Color>
                                       </Style>
                                       <ChartAxisTitle>
@@ -319,6 +445,7 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                         </Style>
                                       </ChartMajorTickMarks>
                                       <ChartMinorTickMarks>
+                                        <Enabled>True</Enabled>
                                         <Style>
                                           <Border>
                                             <Color>Gainsboro</Color>
@@ -401,7 +528,7 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                         <Color>#5c5c5c</Color>
                                       </Style>
                                       <ChartAxisTitle>
-                                        <Caption>Size (MB)</Caption>
+                                        <Caption />
                                         <Style>
                                           <FontSize>9pt</FontSize>
                                           <Color>#5c5c5c</Color>
@@ -526,6 +653,20 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                   <ColumnSeparatorColor>Black</ColumnSeparatorColor>
                                 </ChartLegend>
                               </ChartLegends>
+                              <ChartTitles>
+                                <ChartTitle Name="Default">
+                                  <Caption>="File: " &amp; Fields!file_name.Value</Caption>
+                                  <Style>
+                                    <BackgroundGradientType>None</BackgroundGradientType>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <TextAlign>Left</TextAlign>
+                                    <VerticalAlign>Top</VerticalAlign>
+                                    <Color>Gray</Color>
+                                  </Style>
+                                  <Position>TopLeft</Position>
+                                </ChartTitle>
+                              </ChartTitles>
                               <Palette>Pastel</Palette>
                               <ChartBorderSkin>
                                 <Style>
@@ -543,10 +684,11 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                   <VerticalAlign>Top</VerticalAlign>
                                 </Style>
                               </ChartNoDataMessage>
-                              <DataSetName>FileAllocation</DataSetName>
-                              <Top>1.2cm</Top>
-                              <Height>13cm</Height>
-                              <Width>30cm</Width>
+                              <DataSetName>DataAllocationDataset</DataSetName>
+                              <Top>1.05833cm</Top>
+                              <Left>0.00003cm</Left>
+                              <Height>14.89417cm</Height>
+                              <Width>29.35137cm</Width>
                               <Style>
                                 <Border>
                                   <Color>LightGrey</Color>
@@ -556,215 +698,162 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                                 <BackgroundGradientType>None</BackgroundGradientType>
                               </Style>
                             </Chart>
-                            <Tablix Name="Tablix2">
-                              <TablixBody>
-                                <TablixColumns>
-                                  <TablixColumn>
-                                    <Width>2.83104cm</Width>
-                                  </TablixColumn>
-                                  <TablixColumn>
-                                    <Width>6.08541cm</Width>
-                                  </TablixColumn>
-                                </TablixColumns>
-                                <TablixRows>
-                                  <TablixRow>
-                                    <Height>0.6cm</Height>
-                                    <TablixCells>
-                                      <TablixCell>
-                                        <CellContents>
-                                          <Textbox Name="Textbox25">
-                                            <CanGrow>true</CanGrow>
-                                            <KeepTogether>true</KeepTogether>
-                                            <Paragraphs>
-                                              <Paragraph>
-                                                <TextRuns>
-                                                  <TextRun>
-                                                    <Value>File:</Value>
-                                                    <Style>
-                                                      <FontSize>9pt</FontSize>
-                                                      <FontWeight>Bold</FontWeight>
-                                                      <Color>Gray</Color>
-                                                    </Style>
-                                                  </TextRun>
-                                                </TextRuns>
-                                                <Style>
-                                                  <TextAlign>Right</TextAlign>
-                                                </Style>
-                                              </Paragraph>
-                                            </Paragraphs>
-                                            <rd:DefaultName>Textbox19</rd:DefaultName>
-                                            <ZIndex>2</ZIndex>
-                                            <Style>
-                                              <Border>
-                                                <Style>None</Style>
-                                              </Border>
-                                              <VerticalAlign>Middle</VerticalAlign>
-                                              <PaddingLeft>2pt</PaddingLeft>
-                                              <PaddingRight>2pt</PaddingRight>
-                                              <PaddingTop>2pt</PaddingTop>
-                                              <PaddingBottom>2pt</PaddingBottom>
-                                            </Style>
-                                          </Textbox>
-                                        </CellContents>
-                                      </TablixCell>
-                                      <TablixCell>
-                                        <CellContents>
-                                          <Textbox Name="FileName">
-                                            <CanGrow>true</CanGrow>
-                                            <KeepTogether>true</KeepTogether>
-                                            <Paragraphs>
-                                              <Paragraph>
-                                                <TextRuns>
-                                                  <TextRun>
-                                                    <Value>=Fields!file_name.Value</Value>
-                                                    <Style>
-                                                      <FontSize>9pt</FontSize>
-                                                      <Color>Gray</Color>
-                                                    </Style>
-                                                  </TextRun>
-                                                </TextRuns>
-                                                <Style>
-                                                  <TextAlign>Left</TextAlign>
-                                                </Style>
-                                              </Paragraph>
-                                            </Paragraphs>
-                                            <ZIndex>1</ZIndex>
-                                            <Style>
-                                              <Border>
-                                                <Style>None</Style>
-                                              </Border>
-                                              <VerticalAlign>Middle</VerticalAlign>
-                                              <PaddingLeft>2pt</PaddingLeft>
-                                              <PaddingRight>2pt</PaddingRight>
-                                              <PaddingTop>2pt</PaddingTop>
-                                              <PaddingBottom>2pt</PaddingBottom>
-                                            </Style>
-                                          </Textbox>
-                                        </CellContents>
-                                      </TablixCell>
-                                    </TablixCells>
-                                  </TablixRow>
-                                  <TablixRow>
-                                    <Height>0.6cm</Height>
-                                    <TablixCells>
-                                      <TablixCell>
-                                        <CellContents>
-                                          <Textbox Name="Textbox22">
-                                            <CanGrow>true</CanGrow>
-                                            <KeepTogether>true</KeepTogether>
-                                            <Paragraphs>
-                                              <Paragraph>
-                                                <TextRuns>
-                                                  <TextRun>
-                                                    <Value>=Fields!usage.Value</Value>
-                                                    <Style>
-                                                      <FontSize>9pt</FontSize>
-                                                      <FontWeight>Bold</FontWeight>
-                                                      <Color>Gray</Color>
-                                                    </Style>
-                                                  </TextRun>
-                                                </TextRuns>
-                                                <Style>
-                                                  <TextAlign>Right</TextAlign>
-                                                </Style>
-                                              </Paragraph>
-                                            </Paragraphs>
-                                            <rd:DefaultName>Textbox19</rd:DefaultName>
-                                            <ZIndex>4</ZIndex>
-                                            <Style>
-                                              <Border>
-                                                <Style>None</Style>
-                                              </Border>
-                                              <VerticalAlign>Middle</VerticalAlign>
-                                              <PaddingLeft>2pt</PaddingLeft>
-                                              <PaddingRight>2pt</PaddingRight>
-                                              <PaddingTop>2pt</PaddingTop>
-                                              <PaddingBottom>2pt</PaddingBottom>
-                                            </Style>
-                                          </Textbox>
-                                        </CellContents>
-                                      </TablixCell>
-                                      <TablixCell>
-                                        <CellContents>
-                                          <Textbox Name="FileSize">
-                                            <CanGrow>true</CanGrow>
-                                            <KeepTogether>true</KeepTogether>
-                                            <Paragraphs>
-                                              <Paragraph>
-                                                <TextRuns>
-                                                  <TextRun>
-                                                    <Value>=Sum(Fields!pages_in_range.Value) / 128.0</Value>
-                                                    <Style>
-                                                      <FontSize>9pt</FontSize>
-                                                      <Format>#,0.00 MB</Format>
-                                                      <Color>Gray</Color>
-                                                    </Style>
-                                                  </TextRun>
-                                                </TextRuns>
-                                                <Style>
-                                                  <TextAlign>Left</TextAlign>
-                                                </Style>
-                                              </Paragraph>
-                                            </Paragraphs>
-                                            <ZIndex>3</ZIndex>
-                                            <Style>
-                                              <Border>
-                                                <Style>None</Style>
-                                              </Border>
-                                              <VerticalAlign>Middle</VerticalAlign>
-                                              <PaddingLeft>2pt</PaddingLeft>
-                                              <PaddingRight>2pt</PaddingRight>
-                                              <PaddingTop>2pt</PaddingTop>
-                                              <PaddingBottom>2pt</PaddingBottom>
-                                            </Style>
-                                          </Textbox>
-                                        </CellContents>
-                                      </TablixCell>
-                                    </TablixCells>
-                                  </TablixRow>
-                                </TablixRows>
-                              </TablixBody>
-                              <TablixColumnHierarchy>
-                                <TablixMembers>
-                                  <TablixMember />
-                                  <TablixMember />
-                                </TablixMembers>
-                              </TablixColumnHierarchy>
-                              <TablixRowHierarchy>
-                                <TablixMembers>
-                                  <TablixMember>
-                                    <KeepWithGroup>After</KeepWithGroup>
-                                  </TablixMember>
-                                  <TablixMember>
-                                    <Group Name="Details">
-                                      <GroupExpressions>
-                                        <GroupExpression>=Fields!usage.Value</GroupExpression>
-                                      </GroupExpressions>
-                                    </Group>
-                                  </TablixMember>
-                                </TablixMembers>
-                              </TablixRowHierarchy>
-                              <DataSetName>FileAllocation</DataSetName>
-                              <Height>1.2cm</Height>
-                              <Width>8.91645cm</Width>
+                            <Textbox Name="GoRight">
+                              <CanGrow>true</CanGrow>
+                              <CanShrink>true</CanShrink>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>[&gt;&gt;]</Value>
+                                      <Style>
+                                        <FontSize>12pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <Color>DeepSkyBlue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <ActionInfo>
+                                <Actions>
+                                  <Action>
+                                    <Drillthrough>
+                                      <ReportName>Data File Allocation Map - Overview (SQL2012 and newer)</ReportName>
+                                      <Parameters>
+                                        <Parameter Name="ServerName">
+                                          <Value>=Parameters!ServerName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="DatabaseName">
+                                          <Value>=Parameters!DatabaseName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="ObjectTypeName">
+                                          <Value>=Parameters!ObjectTypeName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="ObjectName">
+                                          <Value>=Parameters!ObjectName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="Filtered">
+                                          <Value>=Parameters!Filtered.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="FileName">
+                                          <Value>=Parameters!FileName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="FromPageId">
+                                          <Value>=Parameters!ToPageId.Value + 1</Value>
+                                        </Parameter>
+                                        <Parameter Name="ToPageId">
+                                          <Value>=Parameters!ToPageId.Value + 1 + (Parameters!ToPageId.Value-Parameters!FromPageId.Value)</Value>
+                                        </Parameter>
+                                      </Parameters>
+                                    </Drillthrough>
+                                  </Action>
+                                </Actions>
+                              </ActionInfo>
+                              <Left>26.52035cm</Left>
+                              <Height>0.84666cm</Height>
+                              <Width>2.83102cm</Width>
                               <ZIndex>1</ZIndex>
-                              <DocumentMapLabel>=First(Fields!file_name.Value, "FileAllocation")</DocumentMapLabel>
+                              <Visibility>
+                                <Hidden>=(IIF(IsNothing(Parameters!ToPageId.Value), First(Fields!total_page_count.Value, "DataAllocationDataset"), Parameters!ToPageId.Value) &gt;= First(Fields!total_page_count.Value, "DataAllocationDataset"))</Hidden>
+                              </Visibility>
+                              <ToolTip>Shift Interval Right</ToolTip>
                               <Style>
                                 <Border>
                                   <Style>None</Style>
                                 </Border>
+                                <VerticalAlign>Middle</VerticalAlign>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
                               </Style>
-                            </Tablix>
+                            </Textbox>
+                            <Textbox Name="GoLeft">
+                              <CanGrow>true</CanGrow>
+                              <CanShrink>true</CanShrink>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>[&lt;&lt;]</Value>
+                                      <Style>
+                                        <FontSize>12pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <Color>DeepSkyBlue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <ActionInfo>
+                                <Actions>
+                                  <Action>
+                                    <Drillthrough>
+                                      <ReportName>Data File Allocation Map - Overview (SQL2012 and newer)</ReportName>
+                                      <Parameters>
+                                        <Parameter Name="ServerName">
+                                          <Value>=Parameters!ServerName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="DatabaseName">
+                                          <Value>=Parameters!DatabaseName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="ObjectTypeName">
+                                          <Value>=Parameters!ObjectTypeName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="ObjectName">
+                                          <Value>=Parameters!ObjectName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="Filtered">
+                                          <Value>=Parameters!Filtered.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="FileName">
+                                          <Value>=Parameters!FileName.Value</Value>
+                                        </Parameter>
+                                        <Parameter Name="FromPageId">
+                                          <Value>=Parameters!FromPageId.Value-1-(Parameters!ToPageId.Value-Parameters!FromPageId.Value)</Value>
+                                        </Parameter>
+                                        <Parameter Name="ToPageId">
+                                          <Value>=Parameters!FromPageId.Value-1</Value>
+                                        </Parameter>
+                                      </Parameters>
+                                    </Drillthrough>
+                                  </Action>
+                                </Actions>
+                              </ActionInfo>
+                              <Left>0.00003cm</Left>
+                              <Height>0.88194cm</Height>
+                              <Width>2.83102cm</Width>
+                              <ZIndex>2</ZIndex>
+                              <Visibility>
+                                <Hidden>=IIF(Parameters!FromPageId.Value &gt; 8, False, True)</Hidden>
+                              </Visibility>
+                              <ToolTip>Shift Interval Left</ToolTip>
+                              <Style>
+                                <Border>
+                                  <Style>None</Style>
+                                </Border>
+                                <VerticalAlign>Middle</VerticalAlign>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
                           </ReportItems>
                           <KeepTogether>true</KeepTogether>
                           <Style>
                             <Border>
-                              <Color>Gray</Color>
                               <Style>None</Style>
                             </Border>
-                            <TopBorder>
-                              <Style>Solid</Style>
-                            </TopBorder>
                           </Style>
                         </Rectangle>
                       </CellContents>
@@ -781,31 +870,176 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
             <TablixRowHierarchy>
               <TablixMembers>
                 <TablixMember>
-                  <Group Name="FileName">
+                  <Group Name="FileIdGroup">
                     <GroupExpressions>
-                      <GroupExpression>=Fields!file_name.Value</GroupExpression>
+                      <GroupExpression>=Fields!file_id.Value</GroupExpression>
                     </GroupExpressions>
                   </Group>
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
-            <DataSetName>FileAllocation</DataSetName>
-            <Height>14.2cm</Height>
-            <Width>30cm</Width>
+            <DataSetName>DataAllocationDataset</DataSetName>
+            <Top>0.6cm</Top>
+            <Left>0.00003cm</Left>
+            <Height>15.9525cm</Height>
+            <Width>29.35137cm</Width>
+            <ZIndex>1</ZIndex>
             <Style>
               <Border>
                 <Style>None</Style>
               </Border>
             </Style>
           </Tablix>
+          <Textbox Name="Textbox26">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>From Page:</Value>
+                    <Style>
+                      <FontSize>9pt</FontSize>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>Gray</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Right</TextAlign>
+                </Style>
+              </Paragraph>
+            </Paragraphs>
+            <rd:DefaultName>Textbox19</rd:DefaultName>
+            <Left>20.78014cm</Left>
+            <Height>0.6cm</Height>
+            <Width>1.94438cm</Width>
+            <ZIndex>2</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <VerticalAlign>Middle</VerticalAlign>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
+          <Textbox Name="Textbox29">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>=Parameters!FromPageId.Value</Value>
+                    <Style>
+                      <FontSize>9pt</FontSize>
+                      <Color>Gray</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Left</TextAlign>
+                </Style>
+              </Paragraph>
+            </Paragraphs>
+            <rd:DefaultName>Textbox29</rd:DefaultName>
+            <Left>22.72452cm</Left>
+            <Height>0.6cm</Height>
+            <Width>2.5cm</Width>
+            <ZIndex>3</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <VerticalAlign>Middle</VerticalAlign>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
+          <Textbox Name="Textbox27">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>To Page:</Value>
+                    <Style>
+                      <FontSize>9pt</FontSize>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>Gray</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Right</TextAlign>
+                </Style>
+              </Paragraph>
+            </Paragraphs>
+            <rd:DefaultName>Textbox24</rd:DefaultName>
+            <Left>25.22452cm</Left>
+            <Height>0.6cm</Height>
+            <Width>1.62688cm</Width>
+            <ZIndex>4</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <VerticalAlign>Middle</VerticalAlign>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
+          <Textbox Name="Textbox30">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>=Parameters!ToPageId.Value</Value>
+                    <Style>
+                      <FontSize>9pt</FontSize>
+                      <Color>Gray</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Left</TextAlign>
+                </Style>
+              </Paragraph>
+            </Paragraphs>
+            <rd:DefaultName>Textbox30</rd:DefaultName>
+            <Left>26.8514cm</Left>
+            <Height>0.6cm</Height>
+            <Width>2.5cm</Width>
+            <ZIndex>5</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <VerticalAlign>Middle</VerticalAlign>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
         </ReportItems>
-        <Height>5.59055in</Height>
+        <Height>6.51673in</Height>
         <Style />
       </Body>
-      <Width>11.81102in</Width>
+      <Width>11.55568in</Width>
       <Page>
         <PageHeader>
-          <Height>2.00939cm</Height>
+          <Height>3.03243cm</Height>
           <PrintOnFirstPage>true</PrintOnFirstPage>
           <PrintOnLastPage>true</PrintOnLastPage>
           <ReportItems>
@@ -823,7 +1057,7 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                       </Style>
                     </TextRun>
                     <TextRun>
-                      <Value>Version 2.0 (SQL 2012 and newer)</Value>
+                      <Value>Version 1.0</Value>
                       <Style>
                         <Color>White</Color>
                       </Style>
@@ -833,8 +1067,8 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>textbox1</rd:DefaultName>
-              <Height>0.37444in</Height>
-              <Width>11.81102in</Width>
+              <Height>0.41611in</Height>
+              <Width>11.55568in</Width>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>
                 <PaddingLeft>2pt</PaddingLeft>
@@ -863,10 +1097,10 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>ServerName</rd:DefaultName>
-              <Top>0.40222in</Top>
-              <Left>1.11458in</Left>
+              <Top>0.41611in</Top>
+              <Left>1.11459in</Left>
               <Height>0.19444in</Height>
-              <Width>2.39583in</Width>
+              <Width>6.99714in</Width>
               <ZIndex>1</ZIndex>
               <Style>
                 <Border>
@@ -900,7 +1134,7 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>Textbox19</rd:DefaultName>
-              <Top>0.40222in</Top>
+              <Top>0.41611in</Top>
               <Height>0.19444in</Height>
               <Width>1.11458in</Width>
               <ZIndex>2</ZIndex>
@@ -934,10 +1168,10 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Top>0.59666in</Top>
-              <Left>1.11458in</Left>
+              <Top>0.61055in</Top>
+              <Left>1.11459in</Left>
               <Height>0.19444in</Height>
-              <Width>2.39583in</Width>
+              <Width>6.99714in</Width>
               <ZIndex>3</ZIndex>
               <Style>
                 <Border>
@@ -971,7 +1205,7 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>Textbox19</rd:DefaultName>
-              <Top>0.59666in</Top>
+              <Top>0.61055in</Top>
               <Height>0.19444in</Height>
               <Width>1.11458in</Width>
               <ZIndex>4</ZIndex>
@@ -1006,11 +1240,189 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>ExecutionTime</rd:DefaultName>
-              <Top>0.40222in</Top>
-              <Left>8.79525in</Left>
+              <Top>0.41611in</Top>
+              <Left>8.18117in</Left>
               <Height>0.19444in</Height>
-              <Width>2.76042in</Width>
+              <Width>3.37451in</Width>
               <ZIndex>5</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="DatabaseName2">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>=Parameters!ObjectTypeName.Value</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Left</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <Top>0.80499in</Top>
+              <Left>1.11459in</Left>
+              <Height>0.19444in</Height>
+              <Width>6.99714in</Width>
+              <ZIndex>6</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="Textbox21">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>Object Type:</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <FontWeight>Bold</FontWeight>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>Textbox19</rd:DefaultName>
+              <Top>0.80499in</Top>
+              <Height>0.19444in</Height>
+              <Width>1.11458in</Width>
+              <ZIndex>7</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="DatabaseName3">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>=Parameters!ObjectName.Value</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Left</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <Top>0.99943in</Top>
+              <Left>1.1146in</Left>
+              <Height>0.19444in</Height>
+              <Width>6.99714in</Width>
+              <ZIndex>8</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="Textbox22">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>Object Name:</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <FontWeight>Bold</FontWeight>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>Textbox19</rd:DefaultName>
+              <Top>0.99943in</Top>
+              <Left>0.00003cm</Left>
+              <Height>0.19444in</Height>
+              <Width>1.11458in</Width>
+              <ZIndex>9</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="ExecutionTime2">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>=IIF(Parameters!Filtered.Value, "(Filtered)", "")</Value>
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <Color>Silver</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>ExecutionTime</rd:DefaultName>
+              <Top>0.61055in</Top>
+              <Left>8.18117in</Left>
+              <Height>0.19444in</Height>
+              <Width>3.37451in</Width>
+              <ZIndex>10</ZIndex>
               <Style>
                 <Border>
                   <Style>None</Style>
@@ -1029,43 +1441,10 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
           </Style>
         </PageHeader>
         <PageFooter>
-          <Height>0.47625cm</Height>
+          <Height>0.47627cm</Height>
           <PrintOnFirstPage>true</PrintOnFirstPage>
           <PrintOnLastPage>true</PrintOnLastPage>
           <ReportItems>
-            <Textbox Name="Textbox12">
-              <CanGrow>true</CanGrow>
-              <KeepTogether>true</KeepTogether>
-              <Paragraphs>
-                <Paragraph>
-                  <TextRuns>
-                    <TextRun>
-                      <Value>=Year(Now())</Value>
-                      <Style>
-                        <FontSize>8pt</FontSize>
-                        <Color>Gray</Color>
-                      </Style>
-                    </TextRun>
-                  </TextRuns>
-                  <Style>
-                    <TextAlign>Right</TextAlign>
-                  </Style>
-                </Paragraph>
-              </Paragraphs>
-              <rd:DefaultName>Textbox2</rd:DefaultName>
-              <Left>0.00001cm</Left>
-              <Height>0.1875in</Height>
-              <Width>0.34326in</Width>
-              <Style>
-                <Border>
-                  <Style>None</Style>
-                </Border>
-                <PaddingLeft>2pt</PaddingLeft>
-                <PaddingRight>2pt</PaddingRight>
-                <PaddingTop>2pt</PaddingTop>
-                <PaddingBottom>2pt</PaddingBottom>
-              </Style>
-            </Textbox>
             <Textbox Name="Textbox3">
               <CanGrow>true</CanGrow>
               <KeepTogether>true</KeepTogether>
@@ -1100,9 +1479,42 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>Textbox2</rd:DefaultName>
-              <Left>0.34326in</Left>
+              <Top>0cm</Top>
+              <Left>0.44743in</Left>
               <Height>0.1875in</Height>
-              <Width>11.46776in</Width>
+              <Width>11.10825in</Width>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="Textbox12">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>="© " &amp; Year(Now())</Value>
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>Textbox2</rd:DefaultName>
+              <Height>0.1875in</Height>
+              <Width>0.44743in</Width>
               <ZIndex>1</ZIndex>
               <Style>
                 <Border>
@@ -1142,14 +1554,88 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
     <ReportParameter Name="DatabaseName">
       <DataType>String</DataType>
       <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>master</Value>
+        </Values>
+      </DefaultValue>
       <AllowBlank>true</AllowBlank>
       <Prompt>DatabaseName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ErrorText">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ErrorText</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="FontName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>"Tahoma"</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>FontName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ObjectTypeName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>Table</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ObjectTypeName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ObjectName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <Values>
+          <Value>sys.objects</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ObjectName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="Filtered">
+      <DataType>Boolean</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Filtered</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="MaxItems">
+      <DataType>Integer</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>128</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Max Items</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="FileName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>File Name</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="FromPageId">
+      <DataType>Integer</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>From Page Id</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ToPageId">
+      <DataType>Integer</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>To Page Id</Prompt>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>4</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -1160,6 +1646,51 @@ Format(Sum(Fields!pages_in_range.Value) / 128.0, "#,0 MB"), "")</Label>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>DatabaseName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>ErrorText</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>FontName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>ObjectTypeName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>ObjectName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>3</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>Filtered</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>3</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>MaxItems</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>FileName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>FromPageId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>ToPageId</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>

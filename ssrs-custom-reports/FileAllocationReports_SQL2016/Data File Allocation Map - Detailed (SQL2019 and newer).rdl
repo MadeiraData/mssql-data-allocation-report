@@ -19,8 +19,14 @@
       <Query>
         <DataSourceName>LocalServer</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@ObjectType">
+            <Value>=Parameters!ObjectTypeName.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@DatabaseName">
             <Value>=Parameters!DatabaseName.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@ObjectName">
+            <Value>=Parameters!ObjectName.Value</Value>
           </QueryParameter>
           <QueryParameter Name="@FileName">
             <Value>=Parameters!FileName.Value</Value>
@@ -32,35 +38,75 @@
             <Value>=Parameters!ToPageId.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT
+        <CommandText>SET NOCOUNT ON;
+DECLARE @IndexId int = NULL, @TableId int = NULL;
+
+IF @ObjectType = 'Index'
+BEGIN
+	SELECT @TableId = object_id
+	FROM sys.indexes
+	WHERE name = @ObjectName
+
+	IF @@ROWCOUNT &lt;&gt; 1 RAISERROR(N'Unable to determine table to which index "%s" belongs', 16, 1, @ObjectName);
+
+	SET @IndexId = INDEXPROPERTY(@TableId, @ObjectName, 'IndexID');
+END
+ELSE IF @ObjectType = 'Table'
+BEGIN
+	SET @TableId = OBJECT_ID(@ObjectName);
+END
+ELSE IF @ObjectType &lt;&gt; 'Database'
+BEGIN
+	RAISERROR(N'Object Type "%s" is not supported', 16, 1, @ObjectType);
+END
+
+SELECT
   f.file_name
 , f.file_id
-, page_identifier = CONCAT(f.file_id, ':', f.page_id)
-, f.page_id
+, f.file_total_size
+, page_identifier = CONCAT(f.file_id, ':', p.page_id)
+, p.page_id
 , p.page_type
 , page_type_desc = ISNULL(p.page_type_desc, 'EMPTY')
-, free_bytes = ISNULL(p.free_bytes, 8 * 1024)
-, used_bytes = ISNULL(p.free_bytes_offset, 0)
-, free_bytes_percent = ISNULL(p.free_bytes * 100 / (p.free_bytes + p.free_bytes_offset), 100)
-, p.is_mixed_extent
+, free_bytes = ISNULL(pinfo.free_bytes, 8192)
+, used_bytes = ISNULL(8192 - pinfo.free_bytes, 0)
+, p.total_page_count
 , p.object_id
 , schema_name = sch.[name]
 , object_name = ob.[name]
 , p.index_id
 , index_name = ix.[name]
 , p.partition_id
-FROM (
-	SELECT database_id, file_id, file_name = [name], size, c.page_id
-	FROM sys.master_files AS f
-	CROSS APPLY
-	(
-		SELECT TOP(f.size) ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS page_id
-		FROM sys.all_columns a CROSS JOIN sys.all_columns b
-	) AS c 
-	WHERE database_id = DB_ID(@DatabaseName) AND type = 0
-	AND f.name = @FileName AND c.page_id BETWEEN @FromPageId AND @ToPageId
+FROM 
+(
+SELECT *
+FROM
+(
+SELECT allocated_page_file_id
+, page_id = allocated_page_page_id
+, page_type
+, page_type_desc = ISNULL(page_type_desc, 'EMPTY')
+, free_bytes = CASE WHEN ISNULL(page_type_desc, 'EMPTY') = 'EMPTY' THEN 8192 ELSE ISNULL((100 - page_free_space_percent) / 100.0 * 8192, 0) END
+, used_bytes = CASE WHEN ISNULL(page_type_desc, 'EMPTY') = 'EMPTY' THEN 0 ELSE ISNULL(page_free_space_percent / 100.0 * 8192, 8192) END
+, total_page_count = MAX(allocated_page_page_id) OVER (PARTITION BY allocated_page_file_id)
+, object_id
+, index_id
+, partition_id
+FROM sys.dm_db_database_page_allocations(DB_ID(@DatabaseName),@TableId,@IndexId,default,'DETAILED')
+) AS p
+WHERE (@FromPageId IS NULL OR p.page_id &gt;= @FromPageId)
+AND (@ToPageId IS NULL OR p.page_id &lt;= @ToPageId)
+) AS p
+INNER JOIN 
+(
+	SELECT file_id, file_name = [name], size AS file_total_size
+	, file_total_used_space = FILEPROPERTY([name], 'SpaceUsed')
+	FROM sys.database_files AS f
+	WHERE type = 0
+                   AND  (@FileName IS NULL OR f.name = @FileName)
 ) AS f
-OUTER APPLY sys.dm_db_page_info(f.database_id, f.file_id, page_id, 'DETAILED') AS p
+ON f.file_id = p.allocated_page_file_id
+OUTER APPLY sys.dm_db_page_info(DB_ID(@DatabaseName), f.file_id, p.page_id, 'DETAILED') AS pinfo
 LEFT JOIN sys.objects AS ob ON p.object_id = ob.object_id
 LEFT JOIN sys.schemas AS sch ON ob.schema_id = sch.schema_id
 LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.index_id</CommandText>
@@ -78,9 +124,13 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
           <DataField>file_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="file_total_size">
+          <DataField>file_total_size</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
         <Field Name="page_id">
           <DataField>page_id</DataField>
-          <rd:TypeName>System.Int64</rd:TypeName>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="page_type">
           <DataField>page_type</DataField>
@@ -96,15 +146,11 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
         </Field>
         <Field Name="used_bytes">
           <DataField>used_bytes</DataField>
-          <rd:TypeName>System.Int16</rd:TypeName>
-        </Field>
-        <Field Name="free_bytes_percent">
-          <DataField>free_bytes_percent</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="is_mixed_extent">
-          <DataField>is_mixed_extent</DataField>
-          <rd:TypeName>System.Boolean</rd:TypeName>
+        <Field Name="total_page_count">
+          <DataField>total_page_count</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="object_id">
           <DataField>object_id</DataField>
@@ -128,7 +174,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
         </Field>
         <Field Name="partition_id">
           <DataField>partition_id</DataField>
-          <rd:TypeName>System.Int64</rd:TypeName>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -564,7 +610,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
               </Style>
             </ChartNoDataMessage>
             <DataSetName>FileAllocation</DataSetName>
-            <Top>13.9cm</Top>
+            <Top>14.78194cm</Top>
             <Height>15cm</Height>
             <Width>30cm</Width>
             <DocumentMapLabel>Detailed Page Utilization</DocumentMapLabel>
@@ -1507,11 +1553,168 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
               </Border>
             </Style>
           </Tablix>
+          <Textbox Name="GoLeft">
+            <CanGrow>true</CanGrow>
+            <CanShrink>true</CanShrink>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>[&lt;&lt;]</Value>
+                    <Style>
+                      <FontSize>12pt</FontSize>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>DeepSkyBlue</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Left</TextAlign>
+                </Style>
+              </Paragraph>
+            </Paragraphs>
+            <ActionInfo>
+              <Actions>
+                <Action>
+                  <Drillthrough>
+                    <ReportName>Data File Allocation Map - Detailed (SQL2019 and newer)</ReportName>
+                    <Parameters>
+                      <Parameter Name="ServerName">
+                        <Value>=Parameters!ServerName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="DatabaseName">
+                        <Value>=Parameters!DatabaseName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectTypeName">
+                        <Value>=Parameters!ObjectTypeName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectName">
+                        <Value>=Parameters!ObjectName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="Filtered">
+                        <Value>=Parameters!Filtered.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FileName">
+                        <Value>=Parameters!FileName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FromPageId">
+                        <Value>=Parameters!FromPageId.Value-1-(Parameters!ToPageId.Value-Parameters!FromPageId.Value)</Value>
+                      </Parameter>
+                      <Parameter Name="ToPageId">
+                        <Value>=Parameters!FromPageId.Value-1</Value>
+                      </Parameter>
+                      <Parameter Name="TopN">
+                        <Value>=Parameters!TopN.Value</Value>
+                      </Parameter>
+                    </Parameters>
+                  </Drillthrough>
+                </Action>
+              </Actions>
+            </ActionInfo>
+            <Top>13.9cm</Top>
+            <Height>0.88194cm</Height>
+            <Width>2.83102cm</Width>
+            <ZIndex>3</ZIndex>
+            <Visibility>
+              <Hidden>=IIF(Parameters!FromPageId.Value &gt; 8, False, True)</Hidden>
+            </Visibility>
+            <ToolTip>Shift Interval Left</ToolTip>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <VerticalAlign>Middle</VerticalAlign>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
+          <Textbox Name="GoRight">
+            <CanGrow>true</CanGrow>
+            <CanShrink>true</CanShrink>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>[&gt;&gt;]</Value>
+                    <Style>
+                      <FontSize>12pt</FontSize>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>DeepSkyBlue</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Right</TextAlign>
+                </Style>
+              </Paragraph>
+            </Paragraphs>
+            <ActionInfo>
+              <Actions>
+                <Action>
+                  <Drillthrough>
+                    <ReportName>Data File Allocation Map - Detailed (SQL2019 and newer)</ReportName>
+                    <Parameters>
+                      <Parameter Name="ServerName">
+                        <Value>=Parameters!ServerName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="DatabaseName">
+                        <Value>=Parameters!DatabaseName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectTypeName">
+                        <Value>=Parameters!ObjectTypeName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectName">
+                        <Value>=Parameters!ObjectName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="Filtered">
+                        <Value>=Parameters!Filtered.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FileName">
+                        <Value>=Parameters!FileName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FromPageId">
+                        <Value>=Parameters!ToPageId.Value + 1</Value>
+                      </Parameter>
+                      <Parameter Name="ToPageId">
+                        <Value>=Parameters!ToPageId.Value + 1 + (Parameters!ToPageId.Value-Parameters!FromPageId.Value)</Value>
+                      </Parameter>
+                      <Parameter Name="TopN">
+                        <Value>=Parameters!TopN.Value</Value>
+                      </Parameter>
+                    </Parameters>
+                  </Drillthrough>
+                </Action>
+              </Actions>
+            </ActionInfo>
+            <Top>13.9cm</Top>
+            <Left>27.169cm</Left>
+            <Height>0.84666cm</Height>
+            <Width>2.83102cm</Width>
+            <ZIndex>4</ZIndex>
+            <Visibility>
+              <Hidden>=(IIF(IsNothing(Parameters!ToPageId.Value), First(Fields!total_page_count.Value, "FileAllocation"), Parameters!ToPageId.Value) &gt;= First(Fields!total_page_count.Value, "FileAllocation"))</Hidden>
+            </Visibility>
+            <ToolTip>Shift Interval Right</ToolTip>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <VerticalAlign>Middle</VerticalAlign>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
         </ReportItems>
-        <Height>11.37795in</Height>
+        <Height>11.72517in</Height>
         <Style />
       </Body>
-      <Width>12.00001in</Width>
+      <Width>11.81103in</Width>
       <Page>
         <PageHeader>
           <Height>1.97411cm</Height>
@@ -1543,7 +1746,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
               </Paragraphs>
               <rd:DefaultName>textbox1</rd:DefaultName>
               <Height>0.37444in</Height>
-              <Width>11.98485in</Width>
+              <Width>11.81103in</Width>
               <Style>
                 <BackgroundColor>Gray</BackgroundColor>
                 <PaddingLeft>2pt</PaddingLeft>
@@ -1740,7 +1943,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
                       <Value>back to overview</Value>
                       <Style>
                         <FontSize>8pt</FontSize>
-                        <Color>CornflowerBlue</Color>
+                        <Color>DeepSkyBlue</Color>
                       </Style>
                     </TextRun>
                   </TextRuns>
@@ -1755,6 +1958,26 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
                   <Action>
                     <Drillthrough>
                       <ReportName>Data File Allocation Map - Overview (SQL2019 and newer)</ReportName>
+                      <Parameters>
+                        <Parameter Name="ServerName">
+                          <Value>=Parameters!ServerName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="DatabaseName">
+                          <Value>=Parameters!DatabaseName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="ObjectTypeName">
+                          <Value>=Parameters!ObjectTypeName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="ObjectName">
+                          <Value>=Parameters!ObjectName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="Filtered">
+                          <Value>=Parameters!Filtered.Value</Value>
+                        </Parameter>
+                        <Parameter Name="FileName">
+                          <Value>=Parameters!FileName.Value</Value>
+                        </Parameter>
+                      </Parameters>
                     </Drillthrough>
                   </Action>
                 </Actions>
@@ -1806,7 +2029,6 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>Textbox2</rd:DefaultName>
-              <Left>0.00002cm</Left>
               <Height>0.1875in</Height>
               <Width>0.44743in</Width>
               <Style>

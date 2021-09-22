@@ -30,8 +30,8 @@ SELECT
 , from_page_id = MIN(p.page_id)
 , to_page_id = MAX(p.page_id)
 , page_count = COUNT(p.page_id)
-, free_kb = SUM(p.free_bytes) / 1024
-, used_kb = SUM(p.used_bytes) / 1024
+, free_kb = SUM(ISNULL(pinfo.free_bytes, 8 * 1024)) / 1024
+, used_kb = SUM(ISNULL(pinfo.free_bytes_offset, 0)) / 1024
 FROM
 (
 SELECT p.allocated_page_file_id
@@ -54,6 +54,7 @@ INNER JOIN
 	WHERE type = 0
 ) AS f
 ON f.file_id = p.allocated_page_file_id
+OUTER APPLY sys.dm_db_page_info(DB_ID(@DatabaseName), f.file_id, p.page_id, 'DETAILED') AS pinfo
 GROUP BY
   f.file_name
 , f.file_id

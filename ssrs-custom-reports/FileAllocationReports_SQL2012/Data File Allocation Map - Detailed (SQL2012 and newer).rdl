@@ -19,45 +19,96 @@
       <Query>
         <DataSourceName>LocalServer</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@ObjectType">
+            <Value>=Parameters!ObjectTypeName.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@FileName">
             <Value>=Parameters!FileName.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@ObjectName">
+            <Value>=Parameters!ObjectName.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@FromPageId">
             <Value>=Parameters!FromPageId.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@DatabaseName">
+            <Value>=Parameters!DatabaseName.Value</Value>
           </QueryParameter>
           <QueryParameter Name="@ToPageId">
             <Value>=Parameters!ToPageId.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT
+        <CommandText>SET NOCOUNT ON;
+DECLARE @IndexId int = NULL, @TableId int = NULL;
+
+IF @ObjectType = 'Index'
+BEGIN
+	SELECT @TableId = object_id
+	FROM sys.indexes
+	WHERE name = @ObjectName
+
+	IF @@ROWCOUNT &lt;&gt; 1 RAISERROR(N'Unable to determine table to which index "%s" belongs', 16, 1, @ObjectName);
+
+	SET @IndexId = INDEXPROPERTY(@TableId, @ObjectName, 'IndexID');
+END
+ELSE IF @ObjectType = 'Table'
+BEGIN
+	SET @TableId = OBJECT_ID(@ObjectName);
+END
+ELSE IF @ObjectType &lt;&gt; 'Database'
+BEGIN
+	RAISERROR(N'Object Type "%s" is not supported', 16, 1, @ObjectType);
+END
+
+SELECT
   f.file_name
 , f.file_id
-, page_identifier = CONCAT(f.file_id, ':', p.allocated_page_page_id)
-, page_id = p.allocated_page_page_id
+, f.file_total_size
+, page_identifier = CONCAT(f.file_id, ':', p.page_id)
+, p.page_id
 , p.page_type
 , page_type_desc = ISNULL(p.page_type_desc, 'EMPTY')
-, free_bytes = ISNULL((100 - p.page_free_space_percent) / 100.0 * 8192, 0)
-, used_bytes = ISNULL(p.page_free_space_percent / 100.0 * 8192, 8192)
-, free_bytes_percent = ISNULL(p.page_free_space_percent, 100)
-, p.is_mixed_page_allocation
+, free_bytes = ISNULL(p.free_bytes, 8192)
+, used_bytes = ISNULL(p.used_bytes, 0)
+, p.total_page_count
 , p.object_id
 , schema_name = sch.[name]
 , object_name = ob.[name]
 , p.index_id
 , index_name = ix.[name]
 , p.partition_id
-FROM (
-	SELECT database_id, file_id, file_name = [name], size AS file_total_size
+FROM 
+(
+SELECT *
+FROM
+(
+SELECT allocated_page_file_id
+, page_id = allocated_page_page_id
+, page_type
+, page_type_desc = ISNULL(page_type_desc, 'EMPTY')
+, free_bytes = CASE WHEN ISNULL(page_type_desc, 'EMPTY') = 'EMPTY' THEN 8192 ELSE ISNULL((100 - page_free_space_percent) / 100.0 * 8192, 0) END
+, used_bytes = CASE WHEN ISNULL(page_type_desc, 'EMPTY') = 'EMPTY' THEN 0 ELSE ISNULL(page_free_space_percent / 100.0 * 8192, 8192) END
+, total_page_count = MAX(allocated_page_page_id) OVER (PARTITION BY allocated_page_file_id)
+, object_id
+, index_id
+, partition_id
+FROM sys.dm_db_database_page_allocations(DB_ID(@DatabaseName),@TableId,@IndexId,default,'DETAILED')
+) AS p
+WHERE (@FromPageId IS NULL OR p.page_id &gt;= @FromPageId)
+AND (@ToPageId IS NULL OR p.page_id &lt;= @ToPageId)
+) AS p
+INNER JOIN 
+(
+	SELECT file_id, file_name = [name], size AS file_total_size
 	, file_total_used_space = FILEPROPERTY([name], 'SpaceUsed')
-	FROM sys.master_files AS f
-	WHERE f.name = @FileName AND database_id = DB_ID() AND type = 0
+	FROM sys.database_files AS f
+	WHERE type = 0
+                   AND  (@FileName IS NULL OR f.name = @FileName)
 ) AS f
-INNER JOIN sys.dm_db_database_page_allocations(DB_ID(),default,default,default,'DETAILED') AS p
 ON f.file_id = p.allocated_page_file_id
 LEFT JOIN sys.objects AS ob ON p.object_id = ob.object_id
 LEFT JOIN sys.schemas AS sch ON ob.schema_id = sch.schema_id
-LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.index_id
-WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
+LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.index_id</CommandText>
       </Query>
       <Fields>
         <Field Name="file_id">
@@ -71,6 +122,10 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
         <Field Name="file_name">
           <DataField>file_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="file_total_size">
+          <DataField>file_total_size</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="page_id">
           <DataField>page_id</DataField>
@@ -92,13 +147,9 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
           <DataField>used_bytes</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="free_bytes_percent">
-          <DataField>free_bytes_percent</DataField>
+        <Field Name="total_page_count">
+          <DataField>total_page_count</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="is_mixed_page_allocation">
-          <DataField>is_mixed_page_allocation</DataField>
-          <rd:TypeName>System.Byte</rd:TypeName>
         </Field>
         <Field Name="object_id">
           <DataField>object_id</DataField>
@@ -147,301 +198,6 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
     <ReportSection>
       <Body>
         <ReportItems>
-          <Textbox Name="textbox1">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>Data File Allocation Map </Value>
-                    <Style>
-                      <FontSize>20pt</FontSize>
-                      <Color>White</Color>
-                    </Style>
-                  </TextRun>
-                  <TextRun>
-                    <Value>Version 2.0 (SQL 2012 and newer)</Value>
-                    <Style>
-                      <Color>White</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style />
-              </Paragraph>
-            </Paragraphs>
-            <rd:DefaultName>textbox1</rd:DefaultName>
-            <Height>0.37444in</Height>
-            <Width>11.98485in</Width>
-            <Style>
-              <BackgroundColor>Gray</BackgroundColor>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
-          <Textbox Name="ServerName">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>=First(Fields!ServerName.Value, "DBLocal")</Value>
-                    <Style>
-                      <FontSize>9pt</FontSize>
-                      <Color>Gray</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style>
-                  <TextAlign>Left</TextAlign>
-                </Style>
-              </Paragraph>
-            </Paragraphs>
-            <rd:DefaultName>ServerName</rd:DefaultName>
-            <Top>0.40222in</Top>
-            <Left>1.11459in</Left>
-            <Height>0.19444in</Height>
-            <Width>2.39583in</Width>
-            <ZIndex>1</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-              <VerticalAlign>Middle</VerticalAlign>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
-          <Textbox Name="Textbox19">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>Server Name:</Value>
-                    <Style>
-                      <FontSize>9pt</FontSize>
-                      <FontWeight>Bold</FontWeight>
-                      <Color>Gray</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style>
-                  <TextAlign>Right</TextAlign>
-                </Style>
-              </Paragraph>
-            </Paragraphs>
-            <rd:DefaultName>Textbox19</rd:DefaultName>
-            <Top>0.40222in</Top>
-            <Height>0.19444in</Height>
-            <Width>1.11458in</Width>
-            <ZIndex>2</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-              <VerticalAlign>Middle</VerticalAlign>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
-          <Textbox Name="DatabaseName">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>=First(Fields!DBName.Value, "DBLocal")</Value>
-                    <Style>
-                      <FontSize>9pt</FontSize>
-                      <Color>Gray</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style>
-                  <TextAlign>Left</TextAlign>
-                </Style>
-              </Paragraph>
-            </Paragraphs>
-            <Top>0.59666in</Top>
-            <Left>1.11459in</Left>
-            <Height>0.19444in</Height>
-            <Width>2.39583in</Width>
-            <ZIndex>3</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-              <VerticalAlign>Middle</VerticalAlign>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
-          <Textbox Name="Textbox20">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>Database Name:</Value>
-                    <Style>
-                      <FontSize>9pt</FontSize>
-                      <FontWeight>Bold</FontWeight>
-                      <Color>Gray</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style>
-                  <TextAlign>Right</TextAlign>
-                </Style>
-              </Paragraph>
-            </Paragraphs>
-            <rd:DefaultName>Textbox19</rd:DefaultName>
-            <Top>0.59666in</Top>
-            <Height>0.19444in</Height>
-            <Width>1.11458in</Width>
-            <ZIndex>4</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-              <VerticalAlign>Middle</VerticalAlign>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
-          <Textbox Name="ExecutionTime">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>=Globals!ExecutionTime</Value>
-                    <Style>
-                      <FontSize>8pt</FontSize>
-                      <Color>Silver</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style>
-                  <TextAlign>Right</TextAlign>
-                </Style>
-              </Paragraph>
-            </Paragraphs>
-            <rd:DefaultName>ExecutionTime</rd:DefaultName>
-            <Top>0.40222in</Top>
-            <Left>8.18117in</Left>
-            <Height>0.19444in</Height>
-            <Width>3.37451in</Width>
-            <ZIndex>5</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
-          <Textbox Name="Textbox12">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>=Year(Now())</Value>
-                    <Style>
-                      <FontSize>8pt</FontSize>
-                      <Color>Gray</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style>
-                  <TextAlign>Right</TextAlign>
-                </Style>
-              </Paragraph>
-            </Paragraphs>
-            <rd:DefaultName>Textbox2</rd:DefaultName>
-            <Top>11.38165in</Top>
-            <Height>0.1875in</Height>
-            <Width>0.44743in</Width>
-            <ZIndex>6</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
-          <Textbox Name="Textbox3">
-            <CanGrow>true</CanGrow>
-            <KeepTogether>true</KeepTogether>
-            <Paragraphs>
-              <Paragraph>
-                <TextRuns>
-                  <TextRun>
-                    <Value>Madeira Data Solutions </Value>
-                    <Style>
-                      <FontSize>8pt</FontSize>
-                      <Color>Gray</Color>
-                    </Style>
-                  </TextRun>
-                  <TextRun>
-                    <Value>https://github.com/MadeiraData/mssql-data-allocation-report</Value>
-                    <ActionInfo>
-                      <Actions>
-                        <Action>
-                          <Hyperlink>https://github.com/MadeiraData/mssql-data-allocation-report</Hyperlink>
-                        </Action>
-                      </Actions>
-                    </ActionInfo>
-                    <Style>
-                      <FontSize>8pt</FontSize>
-                      <Color>CornflowerBlue</Color>
-                    </Style>
-                  </TextRun>
-                </TextRuns>
-                <Style>
-                  <TextAlign>Left</TextAlign>
-                </Style>
-              </Paragraph>
-            </Paragraphs>
-            <rd:DefaultName>Textbox2</rd:DefaultName>
-            <Top>11.38165in</Top>
-            <Left>0.44743in</Left>
-            <Height>0.1875in</Height>
-            <Width>11.36359in</Width>
-            <ZIndex>7</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-              <PaddingLeft>2pt</PaddingLeft>
-              <PaddingRight>2pt</PaddingRight>
-              <PaddingTop>2pt</PaddingTop>
-              <PaddingBottom>2pt</PaddingBottom>
-            </Style>
-          </Textbox>
           <Chart Name="Chart1">
             <ChartCategoryHierarchy>
               <ChartMembers>
@@ -853,11 +609,10 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
               </Style>
             </ChartNoDataMessage>
             <DataSetName>FileAllocation</DataSetName>
-            <Top>15.90938cm</Top>
-            <Left>0.00001cm</Left>
-            <Height>13cm</Height>
+            <Top>14.81722cm</Top>
+            <Left>0.00004cm</Left>
+            <Height>8.89896cm</Height>
             <Width>30cm</Width>
-            <ZIndex>8</ZIndex>
             <DocumentMapLabel>Detailed Page Utilization</DocumentMapLabel>
             <Style>
               <Border>
@@ -1220,10 +975,10 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
               </Style>
             </ChartNoDataMessage>
             <DataSetName>FileAllocation</DataSetName>
-            <Top>3.20938cm</Top>
+            <Top>1.23528cm</Top>
             <Height>5in</Height>
             <Width>30cm</Width>
-            <ZIndex>9</ZIndex>
+            <ZIndex>1</ZIndex>
             <DocumentMapLabel>Page Utilization by Object</DocumentMapLabel>
             <Style>
               <Border>
@@ -1788,27 +1543,108 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>FileAllocation</DataSetName>
-            <Top>2.00938cm</Top>
+            <Top>0cm</Top>
             <Height>1.2cm</Height>
             <Width>29.35143cm</Width>
-            <ZIndex>10</ZIndex>
+            <ZIndex>2</ZIndex>
             <Style>
               <Border>
                 <Style>None</Style>
               </Border>
             </Style>
           </Tablix>
-          <Textbox Name="ExecutionTime2">
+          <Textbox Name="GoLeft">
             <CanGrow>true</CanGrow>
+            <CanShrink>true</CanShrink>
             <KeepTogether>true</KeepTogether>
             <Paragraphs>
               <Paragraph>
                 <TextRuns>
                   <TextRun>
-                    <Value>back to overview</Value>
+                    <Value>[&lt;&lt;]</Value>
                     <Style>
-                      <FontSize>8pt</FontSize>
-                      <Color>CornflowerBlue</Color>
+                      <FontSize>12pt</FontSize>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>DeepSkyBlue</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Left</TextAlign>
+                </Style>
+              </Paragraph>
+            </Paragraphs>
+            <ActionInfo>
+              <Actions>
+                <Action>
+                  <Drillthrough>
+                    <ReportName>Data File Allocation Map - Detailed (SQL2012 and newer)</ReportName>
+                    <Parameters>
+                      <Parameter Name="ServerName">
+                        <Value>=Parameters!ServerName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="DatabaseName">
+                        <Value>=Parameters!DatabaseName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectTypeName">
+                        <Value>=Parameters!ObjectTypeName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectName">
+                        <Value>=Parameters!ObjectName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="Filtered">
+                        <Value>=Parameters!Filtered.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FileName">
+                        <Value>=Parameters!FileName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FromPageId">
+                        <Value>=Parameters!FromPageId.Value-1-(Parameters!ToPageId.Value-Parameters!FromPageId.Value)</Value>
+                      </Parameter>
+                      <Parameter Name="ToPageId">
+                        <Value>=Parameters!FromPageId.Value-1</Value>
+                      </Parameter>
+                      <Parameter Name="TopN">
+                        <Value>=Parameters!TopN.Value</Value>
+                      </Parameter>
+                    </Parameters>
+                  </Drillthrough>
+                </Action>
+              </Actions>
+            </ActionInfo>
+            <Top>13.93528cm</Top>
+            <Left>0.00003cm</Left>
+            <Height>0.88194cm</Height>
+            <Width>2.83102cm</Width>
+            <ZIndex>3</ZIndex>
+            <Visibility>
+              <Hidden>=IIF(Parameters!FromPageId.Value &gt; 8, False, True)</Hidden>
+            </Visibility>
+            <ToolTip>Shift Interval Left</ToolTip>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <VerticalAlign>Middle</VerticalAlign>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
+          <Textbox Name="GoRight">
+            <CanGrow>true</CanGrow>
+            <CanShrink>true</CanShrink>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>[&gt;&gt;]</Value>
+                    <Style>
+                      <FontSize>12pt</FontSize>
+                      <FontWeight>Bold</FontWeight>
+                      <Color>DeepSkyBlue</Color>
                     </Style>
                   </TextRun>
                 </TextRuns>
@@ -1817,25 +1653,58 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
                 </Style>
               </Paragraph>
             </Paragraphs>
-            <rd:DefaultName>ExecutionTime</rd:DefaultName>
             <ActionInfo>
               <Actions>
                 <Action>
                   <Drillthrough>
-                    <ReportName>Data File Allocation Map - Overview (SQL2012 and newer)</ReportName>
+                    <ReportName>Data File Allocation Map - Detailed (SQL2012 and newer)</ReportName>
+                    <Parameters>
+                      <Parameter Name="ServerName">
+                        <Value>=Parameters!ServerName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="DatabaseName">
+                        <Value>=Parameters!DatabaseName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectTypeName">
+                        <Value>=Parameters!ObjectTypeName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="ObjectName">
+                        <Value>=Parameters!ObjectName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="Filtered">
+                        <Value>=Parameters!Filtered.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FileName">
+                        <Value>=Parameters!FileName.Value</Value>
+                      </Parameter>
+                      <Parameter Name="FromPageId">
+                        <Value>=Parameters!ToPageId.Value + 1</Value>
+                      </Parameter>
+                      <Parameter Name="ToPageId">
+                        <Value>=Parameters!ToPageId.Value + 1 + (Parameters!ToPageId.Value-Parameters!FromPageId.Value)</Value>
+                      </Parameter>
+                      <Parameter Name="TopN">
+                        <Value>=Parameters!TopN.Value</Value>
+                      </Parameter>
+                    </Parameters>
                   </Drillthrough>
                 </Action>
               </Actions>
             </ActionInfo>
-            <Top>0.59666in</Top>
-            <Left>8.18117in</Left>
-            <Height>0.19444in</Height>
-            <Width>3.37451in</Width>
-            <ZIndex>11</ZIndex>
+            <Top>13.93528cm</Top>
+            <Left>27.16902cm</Left>
+            <Height>0.88194cm</Height>
+            <Width>2.83102cm</Width>
+            <ZIndex>4</ZIndex>
+            <Visibility>
+              <Hidden>=(IIF(IsNothing(Parameters!ToPageId.Value), First(Fields!total_page_count.Value, "FileAllocation"), Parameters!ToPageId.Value) &gt;= First(Fields!total_page_count.Value, "FileAllocation"))</Hidden>
+            </Visibility>
+            <ToolTip>Shift Interval Right</ToolTip>
             <Style>
               <Border>
                 <Style>None</Style>
               </Border>
+              <VerticalAlign>Middle</VerticalAlign>
               <PaddingLeft>2pt</PaddingLeft>
               <PaddingRight>2pt</PaddingRight>
               <PaddingTop>2pt</PaddingTop>
@@ -1843,11 +1712,395 @@ WHERE p.allocated_page_page_id BETWEEN @FromPageId AND @ToPageId</CommandText>
             </Style>
           </Textbox>
         </ReportItems>
-        <Height>11.56915in</Height>
+        <Height>9.33708in</Height>
         <Style />
       </Body>
-      <Width>12in</Width>
+      <Width>11.81104in</Width>
       <Page>
+        <PageHeader>
+          <Height>2.00939cm</Height>
+          <PrintOnFirstPage>true</PrintOnFirstPage>
+          <PrintOnLastPage>true</PrintOnLastPage>
+          <ReportItems>
+            <Textbox Name="ServerName">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>=Parameters!ServerName.Value</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Left</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>ServerName</rd:DefaultName>
+              <Top>0.40222in</Top>
+              <Left>1.1146in</Left>
+              <Height>0.19444in</Height>
+              <Width>2.39583in</Width>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="Textbox19">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>Server Name:</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <FontWeight>Bold</FontWeight>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>Textbox19</rd:DefaultName>
+              <Top>0.40222in</Top>
+              <Left>0.00002cm</Left>
+              <Height>0.19444in</Height>
+              <Width>1.11458in</Width>
+              <ZIndex>1</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="DatabaseName">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>=Parameters!DatabaseName.Value</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Left</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <Top>0.59666in</Top>
+              <Left>1.1146in</Left>
+              <Height>0.19444in</Height>
+              <Width>2.39583in</Width>
+              <ZIndex>2</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="Textbox20">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>Database Name:</Value>
+                      <Style>
+                        <FontSize>9pt</FontSize>
+                        <FontWeight>Bold</FontWeight>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>Textbox19</rd:DefaultName>
+              <Top>0.59666in</Top>
+              <Left>0.00002cm</Left>
+              <Height>0.19444in</Height>
+              <Width>1.11458in</Width>
+              <ZIndex>3</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <VerticalAlign>Middle</VerticalAlign>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="textbox1">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>Data File Allocation Map </Value>
+                      <Style>
+                        <FontSize>20pt</FontSize>
+                        <Color>White</Color>
+                      </Style>
+                    </TextRun>
+                    <TextRun>
+                      <Value>Version 2.0 (SQL 2012 and newer)</Value>
+                      <Style>
+                        <Color>White</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style />
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>textbox1</rd:DefaultName>
+              <Left>0.00002cm</Left>
+              <Height>0.37444in</Height>
+              <Width>11.81103in</Width>
+              <ZIndex>4</ZIndex>
+              <Style>
+                <BackgroundColor>Gray</BackgroundColor>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="ExecutionTime">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>=Globals!ExecutionTime</Value>
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <Color>Silver</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>ExecutionTime</rd:DefaultName>
+              <Top>0.40222in</Top>
+              <Left>8.18118in</Left>
+              <Height>0.19444in</Height>
+              <Width>3.37451in</Width>
+              <ZIndex>5</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="ExecutionTime2">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>back to overview</Value>
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <Color>DeepSkyBlue</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>ExecutionTime</rd:DefaultName>
+              <ActionInfo>
+                <Actions>
+                  <Action>
+                    <Drillthrough>
+                      <ReportName>Data File Allocation Map - Overview (SQL2012 and newer)</ReportName>
+                      <Parameters>
+                        <Parameter Name="ServerName">
+                          <Value>=Parameters!ServerName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="DatabaseName">
+                          <Value>=Parameters!DatabaseName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="ObjectTypeName">
+                          <Value>=Parameters!ObjectTypeName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="ObjectName">
+                          <Value>=Parameters!ObjectName.Value</Value>
+                        </Parameter>
+                        <Parameter Name="Filtered">
+                          <Value>=Parameters!Filtered.Value</Value>
+                        </Parameter>
+                        <Parameter Name="FileName">
+                          <Value>=Parameters!FileName.Value</Value>
+                        </Parameter>
+                      </Parameters>
+                    </Drillthrough>
+                  </Action>
+                </Actions>
+              </ActionInfo>
+              <Top>0.59666in</Top>
+              <Left>8.18118in</Left>
+              <Height>0.19444in</Height>
+              <Width>3.37451in</Width>
+              <ZIndex>6</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+          </ReportItems>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+          </Style>
+        </PageHeader>
+        <PageFooter>
+          <Height>0.47625cm</Height>
+          <PrintOnFirstPage>true</PrintOnFirstPage>
+          <PrintOnLastPage>true</PrintOnLastPage>
+          <ReportItems>
+            <Textbox Name="Textbox3">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>Madeira Data Solutions </Value>
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                    <TextRun>
+                      <Value>https://github.com/MadeiraData/mssql-data-allocation-report</Value>
+                      <ActionInfo>
+                        <Actions>
+                          <Action>
+                            <Hyperlink>https://github.com/MadeiraData/mssql-data-allocation-report</Hyperlink>
+                          </Action>
+                        </Actions>
+                      </ActionInfo>
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <Color>CornflowerBlue</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Left</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>Textbox2</rd:DefaultName>
+              <Left>0.44744in</Left>
+              <Height>0.1875in</Height>
+              <Width>11.36359in</Width>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+            <Textbox Name="Textbox12">
+              <CanGrow>true</CanGrow>
+              <KeepTogether>true</KeepTogether>
+              <Paragraphs>
+                <Paragraph>
+                  <TextRuns>
+                    <TextRun>
+                      <Value>=Year(Now())</Value>
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <Color>Gray</Color>
+                      </Style>
+                    </TextRun>
+                  </TextRuns>
+                  <Style>
+                    <TextAlign>Right</TextAlign>
+                  </Style>
+                </Paragraph>
+              </Paragraphs>
+              <rd:DefaultName>Textbox2</rd:DefaultName>
+              <Left>0.00002cm</Left>
+              <Height>0.1875in</Height>
+              <Width>0.44743in</Width>
+              <ZIndex>1</ZIndex>
+              <Style>
+                <Border>
+                  <Style>None</Style>
+                </Border>
+                <PaddingLeft>2pt</PaddingLeft>
+                <PaddingRight>2pt</PaddingRight>
+                <PaddingTop>2pt</PaddingTop>
+                <PaddingBottom>2pt</PaddingBottom>
+              </Style>
+            </Textbox>
+          </ReportItems>
+          <Style>
+            <Border>
+              <Style>None</Style>
+            </Border>
+          </Style>
+        </PageFooter>
         <PageHeight>29.7cm</PageHeight>
         <PageWidth>21cm</PageWidth>
         <LeftMargin>2cm</LeftMargin>

@@ -51,7 +51,6 @@
   <ItemGroup>
     <Report Include="Data File Allocation Map - Detailed (SQL2012 and newer).rdl" />
     <Report Include="Data File Allocation Map - Overview (SQL2012 and newer).rdl" />
-    <Report Include="Data File Allocation Map - Zoomable (SQL2012 and newer).rdl" />
     <Report Include="Data Page Allocation Map (SQL2012 and newer).rdl" />
     <Report Include="Object Allocation Summary (SQL2012 and newer).rdl" />
     <Report Include="TEMPLATE.rdl" />
