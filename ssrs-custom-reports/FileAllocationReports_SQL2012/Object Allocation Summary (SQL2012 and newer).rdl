@@ -195,7 +195,6 @@ ORDER BY t.file_id, t.object_id, t.index_id, t.partition_id</CommandText>
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox24</rd:DefaultName>
-            <Left>0cm</Left>
             <Height>0.6cm</Height>
             <Width>29.3514cm</Width>
             <Style>
@@ -1099,7 +1098,7 @@ ORDER BY t.file_id, t.object_id, t.index_id, t.partition_id</CommandText>
                       </Style>
                     </TextRun>
                     <TextRun>
-                      <Value>Version 1.0</Value>
+                      <Value>Version 1.0 (SQL 2012 and newer)</Value>
                       <Style>
                         <Color>White</Color>
                       </Style>
@@ -1109,7 +1108,6 @@ ORDER BY t.file_id, t.object_id, t.index_id, t.partition_id</CommandText>
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>textbox1</rd:DefaultName>
-              <Left>0cm</Left>
               <Height>0.41611in</Height>
               <Width>11.55568in</Width>
               <Style>
@@ -1178,7 +1176,6 @@ ORDER BY t.file_id, t.object_id, t.index_id, t.partition_id</CommandText>
               </Paragraphs>
               <rd:DefaultName>Textbox19</rd:DefaultName>
               <Top>0.41611in</Top>
-              <Left>0cm</Left>
               <Height>0.19444in</Height>
               <Width>1.11458in</Width>
               <ZIndex>2</ZIndex>
@@ -1250,7 +1247,6 @@ ORDER BY t.file_id, t.object_id, t.index_id, t.partition_id</CommandText>
               </Paragraphs>
               <rd:DefaultName>Textbox19</rd:DefaultName>
               <Top>0.61055in</Top>
-              <Left>0cm</Left>
               <Height>0.19444in</Height>
               <Width>1.11458in</Width>
               <ZIndex>4</ZIndex>
@@ -1357,7 +1353,6 @@ ORDER BY t.file_id, t.object_id, t.index_id, t.partition_id</CommandText>
               </Paragraphs>
               <rd:DefaultName>Textbox19</rd:DefaultName>
               <Top>0.80499in</Top>
-              <Left>0cm</Left>
               <Height>0.19444in</Height>
               <Width>1.11458in</Width>
               <ZIndex>7</ZIndex>

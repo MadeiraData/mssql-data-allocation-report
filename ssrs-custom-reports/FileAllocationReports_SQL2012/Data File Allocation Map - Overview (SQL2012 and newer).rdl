@@ -1057,7 +1057,7 @@ GROUP BY
                       </Style>
                     </TextRun>
                     <TextRun>
-                      <Value>Version 1.0</Value>
+                      <Value>Version 1.0 (SQL 2012 and newer)</Value>
                       <Style>
                         <Color>White</Color>
                       </Style>
@@ -1479,7 +1479,6 @@ GROUP BY
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>Textbox2</rd:DefaultName>
-              <Top>0cm</Top>
               <Left>0.44743in</Left>
               <Height>0.1875in</Height>
               <Width>11.10825in</Width>

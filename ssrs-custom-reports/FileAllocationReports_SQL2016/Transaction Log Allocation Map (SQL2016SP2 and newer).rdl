@@ -724,6 +724,7 @@ FROM sys.dm_db_log_info(DB_ID())</CommandText>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>TranLogAllocation</DataSetName>
+            <Top>0cm</Top>
             <Height>14.45182cm</Height>
             <Width>29.35141cm</Width>
             <Style>
@@ -757,7 +758,7 @@ FROM sys.dm_db_log_info(DB_ID())</CommandText>
                       </Style>
                     </TextRun>
                     <TextRun>
-                      <Value>Version 1.0 (SQL 2016 SP2 and newer)</Value>
+                      <Value>Version 2.0 (SQL 2016SP2 and newer)</Value>
                       <Style>
                         <Color>White</Color>
                       </Style>

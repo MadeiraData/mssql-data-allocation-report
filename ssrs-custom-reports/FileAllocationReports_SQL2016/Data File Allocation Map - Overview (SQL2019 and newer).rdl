@@ -754,7 +754,6 @@ GROUP BY
                                   </Action>
                                 </Actions>
                               </ActionInfo>
-                              <Left>0cm</Left>
                               <Height>0.88194cm</Height>
                               <Width>2.83102cm</Width>
                               <ZIndex>1</ZIndex>
@@ -1058,7 +1057,7 @@ GROUP BY
                       </Style>
                     </TextRun>
                     <TextRun>
-                      <Value>Version 2.0</Value>
+                      <Value>Version 2.0 (SQL 2019 and newer)</Value>
                       <Style>
                         <Color>White</Color>
                       </Style>
@@ -1480,7 +1479,6 @@ GROUP BY
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>Textbox2</rd:DefaultName>
-              <Top>0cm</Top>
               <Left>0.44743in</Left>
               <Height>0.1875in</Height>
               <Width>11.10825in</Width>

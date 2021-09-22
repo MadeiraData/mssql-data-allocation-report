@@ -652,7 +652,7 @@ CROSS APPLY
                       </Style>
                     </TextRun>
                     <TextRun>
-                      <Value>Version 1.0</Value>
+                      <Value>Version 1.0 (SQL 2012 and newer)</Value>
                       <Style>
                         <Color>White</Color>
                       </Style>

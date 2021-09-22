@@ -139,7 +139,7 @@ INNER JOIN sys.database_files AS df ON df.file_id = li.FileID</CommandText>
                     </Style>
                   </TextRun>
                   <TextRun>
-                    <Value>Version 2.0 (SQL 2008 and newer)</Value>
+                    <Value>Version 1.0 (SQL 2008 and newer)</Value>
                     <Style>
                       <Color>White</Color>
                     </Style>
@@ -647,7 +647,7 @@ INNER JOIN sys.database_files AS df ON df.file_id = li.FileID</CommandText>
                                   <ColumnSeparatorColor>Black</ColumnSeparatorColor>
                                 </ChartLegend>
                               </ChartLegends>
-                              <Palette>SemiTransparent</Palette>
+                              <Palette>Pastel</Palette>
                               <ChartBorderSkin>
                                 <Style>
                                   <BackgroundColor>Gray</BackgroundColor>
