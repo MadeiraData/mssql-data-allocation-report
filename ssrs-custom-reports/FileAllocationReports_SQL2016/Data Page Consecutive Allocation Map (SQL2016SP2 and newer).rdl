@@ -240,7 +240,7 @@ CROSS APPLY
                       <Value>=Fields!from_page_id.Value</Value>
                     </SortExpression>
                   </SortExpressions>
-                  <Label>=Fields!from_page_id.Value</Label>
+                  <Label>=Fields!from_page_id.Value &amp; ".." &amp; Fields!to_page_id.Value</Label>
                 </ChartMember>
               </ChartMembers>
             </ChartCategoryHierarchy>
