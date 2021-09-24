@@ -64,7 +64,7 @@ ELSE IF @ObjectType = 'Table'
 BEGIN
 	SET @TableId = OBJECT_ID(@ObjectName);
 END
-ELSE
+ELSE IF ISNULL(@ObjectType,'') &lt;&gt; 'Database'
 BEGIN
 	RAISERROR(N'Object Type "%s" is not supported', 16, 1, @ObjectType);
 END
@@ -276,9 +276,7 @@ CROSS APPLY
                         <UseValueAsLabel>true</UseValueAsLabel>
                         <Visible>true</Visible>
                       </ChartDataLabel>
-                      <ToolTip>="from page: " + Fields!from_page_id.Value + vbCrLf
-+ "to page: " + Fields!to_page_id.Value + vbCrLf
-+ "usage: " + Fields!usage.Value</ToolTip>
+                      <ToolTip>="from page: " &amp; Fields!from_page_id.Value &amp; vbCrLf &amp; "to page: " &amp; Fields!to_page_id.Value &amp; vbCrLf &amp; "usage: " &amp; Fields!usage.Value</ToolTip>
                       <ActionInfo>
                         <Actions>
                           <Action>
@@ -1142,6 +1140,24 @@ CROSS APPLY
     </ReportSection>
   </ReportSections>
   <ReportParameters>
+    <ReportParameter Name="ServerName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ServerName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="DatabaseName">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>DatabaseName</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ErrorText">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>ErrorText</Prompt>
+    </ReportParameter>
     <ReportParameter Name="ObjectTypeName">
       <DataType>String</DataType>
       <Nullable>true</Nullable>
@@ -1154,23 +1170,11 @@ CROSS APPLY
       <AllowBlank>true</AllowBlank>
       <Prompt>ObjectName</Prompt>
     </ReportParameter>
-    <ReportParameter Name="ErrorText">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>ErrorText</Prompt>
-    </ReportParameter>
     <ReportParameter Name="Filtered">
       <DataType>Boolean</DataType>
       <Nullable>true</Nullable>
       <AllowBlank>true</AllowBlank>
       <Prompt>Filtered</Prompt>
-    </ReportParameter>
-    <ReportParameter Name="ServerName">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>ServerName</Prompt>
     </ReportParameter>
     <ReportParameter Name="FontName">
       <DataType>String</DataType>
@@ -1183,12 +1187,6 @@ CROSS APPLY
       <AllowBlank>true</AllowBlank>
       <Prompt>FontName</Prompt>
     </ReportParameter>
-    <ReportParameter Name="DatabaseName">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>DatabaseName</Prompt>
-    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -1198,17 +1196,37 @@ CROSS APPLY
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>ObjectTypeName</ParameterName>
+          <ParameterName>ServerName</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>ObjectName</ParameterName>
+          <ParameterName>DatabaseName</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>2</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>ErrorText</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>ObjectTypeName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>ObjectName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Filtered</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>3</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>FontName</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
