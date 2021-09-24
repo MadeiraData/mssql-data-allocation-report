@@ -646,7 +646,7 @@ LEFT JOIN sys.indexes AS ix ON p.object_id = ix.object_id AND p.index_id = ix.in
                       <Value>=Sum(Fields!used_bytes.Value)</Value>
                     </SortExpression>
                   </SortExpressions>
-                  <Label>=Fields!schema_name.Value &amp; "." &amp; Fields!object_name.Value &amp; Format((CDec(Sum(Fields!used_bytes.Value)) / 1024), " (#,0.00 MB)")</Label>
+                  <Label>=Fields!schema_name.Value &amp; "." &amp; Fields!object_name.Value &amp; Format((CDec(Sum(Fields!used_bytes.Value)) / 1024), " (#,0.00 KB)")</Label>
                 </ChartMember>
               </ChartMembers>
             </ChartCategoryHierarchy>
