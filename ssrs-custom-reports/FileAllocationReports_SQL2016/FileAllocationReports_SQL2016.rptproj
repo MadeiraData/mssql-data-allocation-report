@@ -53,6 +53,7 @@
     <Report Include="Data File Allocation Map - Overview (SQL2019 and newer).rdl" />
     <Report Include="Data Page Consecutive Allocation Map (SQL2016SP2 and newer).rdl" />
     <Report Include="Object Allocation Summary (SQL2016SP2 and newer).rdl" />
+    <Report Include="TEMPLATE.rdl" />
     <Report Include="Transaction Log Allocation Map (SQL2016SP2 and newer).rdl" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Reporting Services\Microsoft.ReportingServices.MSBuilder.targets" />
